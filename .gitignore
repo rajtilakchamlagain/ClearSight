@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Project Data (Avoid uploading large videos and images to GitHub)
+data/
+*.mp4
+*.avi
+*.jpg
+*.jpeg
+*.png
+
+# Deep Learning Models (Avoid hitting 100MB GitHub limit)
+*.pth
+*.pt
+weights/
+
+# VS Code
+.vscode/
+
+# Web App
+backend/__pycache__/
