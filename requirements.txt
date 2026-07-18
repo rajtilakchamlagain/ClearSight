@@ -1,0 +1,12 @@
+streamlit
+torch
+torchvision
+opencv-python-headless
+imageio[ffmpeg]
+imageio
+facenet-pytorch
+numpy
+Pillow
+streamlit-option-menu
+streamlit-lottie
+requests
