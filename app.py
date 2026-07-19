@@ -47,7 +47,7 @@ st.markdown("""
     [data-testid="collapsedControl"] {display: none;}
     
     /* Typography */
-    h1, h2, h3 {
+    h1, h2, h3, h4 {
         font-family: 'Space Grotesk', sans-serif !important;
         color: #ffffff !important;
         letter-spacing: -0.5px;
@@ -143,12 +143,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Helper for Lottie Animations
+# Helper for Lottie Animations (with timeout to prevent hanging on cloud)
+@st.cache_data(ttl=3600)
 def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
+    try:
+        r = requests.get(url, timeout=5)
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except:
         return None
-    return r.json()
 
 lottie_ai = load_lottieurl("https://assets3.lottiefiles.com/packages/lf20_UJNc2t.json")
 
@@ -174,7 +178,6 @@ if selected == "About Developer":
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     col1, col2 = st.columns([1, 2])
     with col1:
-        # A nice placeholder animation for dev
         dev_lottie = load_lottieurl("https://assets10.lottiefiles.com/packages/lf20_w51pcehl.json")
         if dev_lottie: st_lottie(dev_lottie, height=250)
     with col2:
@@ -200,7 +203,6 @@ elif selected == "Architecture":
 
 elif selected == "Live Demo":
     
-    # Header
     col1, col2 = st.columns([3, 1])
     with col1:
         st.markdown("<h1 style='font-size: 3.5rem; margin-bottom: 0px;'>ClearSight <span class='rtc-neon'>Core Engine</span></h1>", unsafe_allow_html=True)
@@ -227,13 +229,12 @@ elif selected == "Live Demo":
         video_cond = st.selectbox("Feed Quality Calibration", ["Clear / Studio Quality", "Blurry / Low-Res CCTV"])
         CONDITION = 2 if "Blurry" in video_cond else 1
     
-    st.markdown("</div>", unsafe_allow_html=True) # End glass card
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if st.button("INITIALIZE TRACKING SEQUENCE 🚀", use_container_width=True):
         if not ref_files or not video_file:
             st.error("⚠️ SYSTEM HALT: Please provide Master Vector images and a Target Video.")
         else:
-            # Settings
             if CONDITION == 2:
                 REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 1, 15, 0.87
             else:
@@ -256,7 +257,6 @@ elif selected == "Live Demo":
 
             detector, resnet, preprocess = load_models()
             
-            # --- ML Logic Functions ---
             def detect_faces_gpu(img_rgb):
                 boxes, probs, landmarks = detector.detect(img_rgb, landmarks=True)
                 if boxes is None: return []
@@ -277,7 +277,7 @@ elif selected == "Live Demo":
                 cl = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(l)
                 return cv2.cvtColor(cv2.merge((cl, a, b)), cv2.COLOR_LAB2RGB)
             
-            # 1. Master Vector Generation
+            # Master Vector Generation
             anchor_embeddings = []
             for ref_f in ref_files:
                 img = Image.open(ref_f).convert('RGB')
@@ -299,7 +299,7 @@ elif selected == "Live Demo":
             st.markdown("✅ **Master Vector Extracted Successfully**", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-            # 2. Video Processing
+            # Video Processing
             tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
             tfile.write(video_file.read())
             tfile.close()
@@ -430,9 +430,9 @@ elif selected == "Live Demo":
                 final_out = out_path
 
             seconds_visible = tracked_frames_count / fps if fps > 0 else 0
-            st.markdown("</div>", unsafe_allow_html=True) # End Feed Card
+            st.markdown("</div>", unsafe_allow_html=True) 
             
-            # --- CUSTOM METRICS HTML ---
+            # --- METRICS ---
             st.markdown(f"""
             <div class='metric-container'>
                 <div class='metric-box'>
@@ -456,7 +456,12 @@ elif selected == "Live Demo":
             with open(final_out, 'rb') as f:
                 video_bytes = f.read()
                 st.video(video_bytes)
-                st.download_button("📥 Download Tracked Video", data=video_bytes, file_name="ClearSight_Tracked.mp4", mime="video/mp4")
+                st.download_button(
+                    "📥 Download Tracked Video", 
+                    data=video_bytes, 
+                    file_name="ClearSight_Target_Locked_Output.mp4", 
+                    mime="video/mp4"
+                )
             st.markdown("</div>", unsafe_allow_html=True)
                 
             if best_screenshots:
@@ -466,26 +471,47 @@ elif selected == "Live Demo":
                 cols = [sc1, sc2, sc3]
                 for i, (dist, frame) in enumerate(best_screenshots):
                     cols[i].image(frame, caption=f"Distance: {dist:.3f}", use_container_width=True)
+                    
+                    # Convert to bytes for download
+                    is_success, buffer = cv2.imencode(".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+                    if is_success:
+                        cols[i].download_button(
+                            label="📥 Save Image",
+                            data=buffer.tobytes(),
+                            file_name=f"ClearSight_BestMatch_Capture_{i+1}.jpg",
+                            mime="image/jpeg",
+                            key=f"dl_img_{i}"
+                        )
                 st.markdown("</div>", unsafe_allow_html=True)
                     
-            if tracked_frames_count > 0 and seconds_visible < 3.0:
+            if tracked_frames_count > 0:
                 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-                st.markdown("<h3>⏳ Auto Slow-Motion Extraction</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='color:#8b9bb4;'>Target was visible for only {seconds_visible:.2f}s. Automatically generating 0.25x highlight clip...</p>", unsafe_allow_html=True)
-                
-                slow_mo_out = "ClearSight_SlowMo.mp4"
-                slow_fps = max(fps * 0.25, 1.0)
-                
-                with st.spinner("Compiling Slow-Motion frames..."):
-                    try:
-                        sm_writer = imageio.get_writer(slow_mo_out, fps=slow_fps, codec='libx264')
-                        for h_frame in highlight_frames: sm_writer.append_data(h_frame)
-                        sm_writer.close()
-                        
-                        with open(slow_mo_out, 'rb') as f:
-                            sm_bytes = f.read()
-                            st.video(sm_bytes)
-                            st.download_button("📥 Download Highlight Clip", data=sm_bytes, file_name="ClearSight_SlowMo.mp4", mime="video/mp4", key="dl_slowmo")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                if seconds_visible < 3.0:
+                    st.markdown("<h3>⏳ Auto Slow-Motion Extraction</h3>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='color:#8b9bb4;'>Target was visible for only {seconds_visible:.2f}s. Automatically generating 0.25x highlight clip...</p>", unsafe_allow_html=True)
+                    
+                    slow_mo_out = "ClearSight_SlowMo.mp4"
+                    slow_fps = max(fps * 0.25, 1.0)
+                    
+                    with st.spinner("Compiling Slow-Motion frames..."):
+                        try:
+                            sm_writer = imageio.get_writer(slow_mo_out, fps=slow_fps, codec='libx264')
+                            for h_frame in highlight_frames: sm_writer.append_data(h_frame)
+                            sm_writer.close()
+                            
+                            with open(slow_mo_out, 'rb') as f:
+                                sm_bytes = f.read()
+                                st.video(sm_bytes)
+                                st.download_button(
+                                    "📥 Download Highlight Clip", 
+                                    data=sm_bytes, 
+                                    file_name="ClearSight_SlowMo_Highlight.mp4", 
+                                    mime="video/mp4", 
+                                    key="dl_slowmo"
+                                )
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                else:
+                    st.markdown("<h3>✅ Slow Motion Not Required</h3>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='color:#8b9bb4;'>The target was visible for a significant amount of time ({seconds_visible:.2f} seconds). An extracted slow-motion highlight reel is not required.</p>", unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
