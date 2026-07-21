@@ -236,7 +236,7 @@ elif selected == "Live Demo":
             st.error("⚠️ SYSTEM HALT: Please provide Master Vector images and a Target Video.")
         else:
             if CONDITION == 2:
-                REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 1, 15, 0.95 # Highly forgiving for paparazzi/CCTV
+                REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 1, 15, 1.10 # Highly forgiving for paparazzi/CCTV
             else:
                 REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 5, 40, 0.85 # Strict Bank-Vault Math
 
