@@ -7,6 +7,7 @@ import streamlit as st
 import tempfile
 import requests
 from torchvision import transforms
+import torch.nn.functional as F
 import facenet_pytorch
 from PIL import Image
 from streamlit_option_menu import option_menu
@@ -236,9 +237,9 @@ elif selected == "Live Demo":
             st.error("⚠️ SYSTEM HALT: Please provide Master Vector images and a Target Video.")
         else:
             if CONDITION == 2:
-                REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 1, 15, 1.10 # Highly forgiving for paparazzi/CCTV
+                REQUIRED_FRAMES, MIN_FACE_SIZE, COSINE_THRESHOLD = 1, 15, 0.65 # Highly forgiving for paparazzi/CCTV
             else:
-                REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 5, 40, 0.85 # Strict Bank-Vault Math
+                REQUIRED_FRAMES, MIN_FACE_SIZE, COSINE_THRESHOLD = 5, 40, 0.75 # Strict Bank-Vault Math
 
             st.markdown("<div class='glass-card' style='text-align:center;'>", unsafe_allow_html=True)
             st.markdown("<h3 style='color:#00f2fe;'>Initializing PyTorch Tensor Cores...</h3>", unsafe_allow_html=True)
@@ -331,7 +332,7 @@ elif selected == "Live Demo":
                 frame_count += 1
                 frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
                 
-                target_detected, best_dist = False, float('inf')
+                target_detected, best_sim = False, float('-inf')
                 
                 if HAS_TWIN:
                     faces = detect_faces_gpu(frame_rgb)
@@ -343,13 +344,13 @@ elif selected == "Live Demo":
                         if enhanced_rgb is None: continue
                         with torch.no_grad():
                             embedding = resnet(preprocess(enhanced_rgb).unsqueeze(0).to(device))
-                        distance = torch.dist(master_embedding, embedding).item()
-                        if distance < EUCLIDEAN_THRESHOLD:
+                        cosine_sim = F.cosine_similarity(master_embedding, embedding).item()
+                        if cosine_sim > COSINE_THRESHOLD:
                             cv2.rectangle(frame_bgr, (x1, y1), (x2, y2), (0, 255, 0), 3)
-                            cv2.putText(frame_bgr, f"MATCH ({distance:.2f})", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                            cv2.putText(frame_bgr, f"MATCH ({cosine_sim:.2f})", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                             tracked_frames_count += 1
                             target_detected = True
-                            best_dist = min(best_dist, distance)
+                            best_sim = max(best_sim, cosine_sim)
                 else:
                     if is_locked and tracker is not None:
                         success, bbox = tracker.update(frame_bgr)
@@ -363,7 +364,7 @@ elif selected == "Live Demo":
                             is_locked, tracker, consecutive_matches = False, None, 0
                     else:
                         faces = detect_faces_gpu(frame_rgb)
-                        best_match_face, best_distance = None, float('inf')
+                        best_match_face, best_match_sim = None, float('-inf')
                         for face in faces:
                             x1, y1, x2, y2 = face['box']
                             w, h = x2 - x1, y2 - y1
@@ -372,9 +373,9 @@ elif selected == "Live Demo":
                             if enhanced_rgb is None: continue
                             with torch.no_grad():
                                 embedding = resnet(preprocess(enhanced_rgb).unsqueeze(0).to(device))
-                            distance = torch.dist(master_embedding, embedding).item()
-                            if distance < EUCLIDEAN_THRESHOLD and distance < best_distance:
-                                best_distance = distance
+                            cosine_sim = F.cosine_similarity(master_embedding, embedding).item()
+                            if cosine_sim > COSINE_THRESHOLD and cosine_sim > best_match_sim:
+                                best_match_sim = cosine_sim
                                 best_match_face = face
 
                         if best_match_face is not None:
@@ -394,17 +395,17 @@ elif selected == "Live Demo":
                             cv2.putText(frame_bgr, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
                             tracked_frames_count += 1
                             target_detected = True
-                            best_dist = best_distance
+                            best_sim = best_match_sim
                         else:
                             consecutive_matches = 0 
                             
                 out.write(frame_bgr)
                 
                 # Screenshots / Highlights
-                if target_detected and best_dist != float('inf'):
+                if target_detected and best_sim != float('-inf'):
                     marked_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-                    best_screenshots.append((best_dist, marked_rgb.copy()))
-                    best_screenshots.sort(key=lambda x: x[0])
+                    best_screenshots.append((best_sim, marked_rgb.copy()))
+                    best_screenshots.sort(key=lambda x: x[0], reverse=True)
                     if len(best_screenshots) > 3: best_screenshots.pop()
                         
                 if target_detected:
@@ -469,8 +470,8 @@ elif selected == "Live Demo":
                 st.markdown("<h3>📸 Highest Confidence Captures</h3>", unsafe_allow_html=True)
                 sc1, sc2, sc3 = st.columns(3)
                 cols = [sc1, sc2, sc3]
-                for i, (dist, frame) in enumerate(best_screenshots):
-                    cols[i].image(frame, caption=f"Distance: {dist:.3f}", use_container_width=True)
+                for i, (sim, frame) in enumerate(best_screenshots):
+                    cols[i].image(frame, caption=f"Similarity: {sim:.3f}", use_container_width=True)
                     
                     # Convert to bytes for download
                     is_success, buffer = cv2.imencode(".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
