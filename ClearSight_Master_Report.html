@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearSight AI - Comprehensive Research Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background: white; color: #374151; line-height: 1.7; }
+        @media print {
+            .page-break { page-break-before: always; }
+            body { padding: 0; background: white; }
+            .shadow-lg { box-shadow: none !important; }
+        }
+        h1, h2, h3, h4 { color: #111827; font-weight: 700; }
+        h1 { font-size: 3rem; letter-spacing: -0.05em; margin-bottom: 1rem; }
+        h2 { font-size: 2rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; margin-top: 3rem; margin-bottom: 1.5rem; }
+        h3 { font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; color: #1f2937; }
+        p { margin-bottom: 1.25rem; font-size: 1.05rem; }
+        .highlight { background-color: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #2563eb; }
+        .placeholder-box { border: 2px dashed #9ca3af; border-radius: 12px; padding: 60px; text-align: center; color: #6b7280; margin: 30px 0; background: #f9fafb; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .table-auto th { background-color: #f3f4f6; text-align: left; padding: 12px; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+        .table-auto td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        .alert-box { background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 1rem; margin: 1.5rem 0; border-radius: 0 8px 8px 0; }
+    </style>
+</head>
+<body class="max-w-5xl mx-auto py-12 px-10 shadow-lg my-10 border border-gray-100 rounded-xl">
+
+    <!-- TITLE PAGE -->
+    <div class="min-h-[80vh] flex flex-col justify-center items-center text-center">
+        <div class="mb-8">
+            <span class="bg-blue-100 text-blue-800 text-sm font-semibold mr-2 px-3 py-1 rounded-full uppercase tracking-wide">Research & Development</span>
+        </div>
+        <h1 class="text-5xl font-extrabold text-gray-900 mb-6 leading-tight">ClearSight AI Core Engine</h1>
+        <h2 class="text-3xl text-gray-600 font-medium border-none mt-0">Advanced Zero-Shot Facial Verification and Tracking in Unconstrained Environments</h2>
+        
+        <div class="mt-16 text-lg text-gray-700">
+            <p class="font-bold text-xl mb-2">Developed By:</p>
+            <p class="text-2xl font-bold text-gray-900">Raj Tilak Chamlagain (RTC)</p>
+            <p class="text-gray-500 mt-2">Academic Internship Project</p>
+        </div>
+
+        <div class="mt-12 text-lg text-gray-700">
+            <p class="font-bold text-xl mb-2">Under the Guidance of:</p>
+            <p class="text-2xl font-bold text-gray-900">Dr. Mahapara K.</p>
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ABSTRACT -->
+    <h2>1. Executive Summary</h2>
+    <p>
+        In modern security and surveillance, tracking a specific individual across multiple crowded, low-resolution video feeds is a highly complex computational problem. Traditional AI models require thousands of training images of a person to recognize them. 
+    </p>
+    <p>
+        <strong>ClearSight AI</strong> is a highly optimized "Zero-Shot" computer vision pipeline. It requires only <strong>one</strong> reference image (a selfie) to instantly track a target across dynamic video feeds. By combining MTCNN for facial extraction, CLAHE for algorithmic lighting correction, and FaceNet (InceptionResnetV1) for generating 512-Dimensional mathematical facial representations, ClearSight achieves enterprise-grade tracking accuracy on consumer hardware.
+    </p>
+
+    <!-- ELI5 SECTION -->
+    <h2>2. Concept Breakdown (Explain Like I'm 5)</h2>
+    <div class="alert-box">
+        <h3 class="mt-0 text-blue-800">How Does ClearSight Actually Work?</h3>
+        <p class="text-blue-900">Imagine you are trying to find your friend in a massive stadium, and you only have one photo of them. Here is how our AI acts like the ultimate security guard:</p>
+        <ul class="list-disc pl-6 text-blue-900 mt-4 space-y-2">
+            <li><strong>Step 1: The Detective (MTCNN)</strong> - The AI scans the photo and draws a box around your friend's face. It ignores the background, trees, and sky.</li>
+            <li><strong>Step 2: The Photoshop Artist (CLAHE)</strong> - The AI notices the photo is a bit dark. It automatically fixes the lighting and contrast so every facial feature is perfectly visible.</li>
+            <li><strong>Step 3: The Mathematician (FaceNet)</strong> - The AI measures the exact distance between your friend's eyes, the shape of their jaw, and 510 other hidden features. It writes down these measurements as a list of 512 numbers. This is their <strong>"Mathematical Fingerprint"</strong>.</li>
+            <li><strong>Step 4: The Search (Tracking)</strong> - The AI watches the stadium security cameras. For every single person that walks by, it quickly measures their face and compares the numbers to your friend's fingerprint. If the numbers match almost perfectly (what we call the <em>Euclidean Distance Threshold</em>), it locks onto them and says <strong>"TARGET FOUND!"</strong></li>
+        </ul>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- GLOSSARY -->
+    <h2>3. Glossary of Terms and Full Forms</h2>
+    <table class="table-auto w-full mt-6 shadow-sm rounded-lg overflow-hidden border border-gray-200">
+        <thead>
+            <tr>
+                <th>Term / Acronym</th>
+                <th>Full Form</th>
+                <th>Meaning in this Project</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="font-bold">AI / ML</td>
+                <td>Artificial Intelligence / Machine Learning</td>
+                <td>The overarching technology allowing the computer to "learn" facial features without explicit programming.</td>
+            </tr>
+            <tr>
+                <td class="font-bold">MTCNN</td>
+                <td>Multi-task Cascaded Convolutional Networks</td>
+                <td>The specific neural network architecture we use exclusively for finding exactly where a face is located in a picture or video frame.</td>
+            </tr>
+            <tr>
+                <td class="font-bold">CLAHE</td>
+                <td>Contrast Limited Adaptive Histogram Equalization</td>
+                <td>An image processing algorithm that fixes bad lighting and shadows on a face before we send it to the AI.</td>
+            </tr>
+            <tr>
+                <td class="font-bold">FaceNet</td>
+                <td>FaceNet (by Google)</td>
+                <td>The core AI model that translates a picture of a face into a 512-dimensional vector (a list of numbers).</td>
+            </tr>
+            <tr>
+                <td class="font-bold">CNN</td>
+                <td>Convolutional Neural Network</td>
+                <td>A type of AI designed specifically to analyze visual imagery. Both MTCNN and FaceNet are built using CNNs.</td>
+            </tr>
+            <tr>
+                <td class="font-bold">FPS</td>
+                <td>Frames Per Second</td>
+                <td>The speed of a video. A 30 FPS video means the AI must process 30 individual pictures every single second.</td>
+            </tr>
+            <tr>
+                <td class="font-bold">Zero-Shot</td>
+                <td>Zero-Shot Learning</td>
+                <td>The ability of the AI to recognize a person it has never been trained on, using only one reference image given at runtime.</td>
+            </tr>
+            <tr>
+                <td class="font-bold">Euclidean Distance</td>
+                <td>N/A (Mathematical Concept)</td>
+                <td>The mathematical calculation of the straight-line distance between two points in 512-dimensional space. Closer to 0 means the faces match exactly.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <!-- ALTERNATE MODELS -->
+    <h2>4. Model Selection and Alternatives</h2>
+    <p>During the research phase of this project, several architectural pathways were considered. Below is a breakdown of alternative models and the scientific reasoning behind why they were rejected in favor of the MTCNN + FaceNet combination.</p>
+
+    <h3>Why didn't we use YOLO (You Only Look Once)?</h3>
+    <p><strong>What is it?</strong> YOLO is the most famous real-time object detection system in the world.</p>
+    <p><strong>Why we rejected it:</strong> YOLO is incredible at detecting <em>classes</em> of objects (e.g., "This is a person", "This is a car"). However, it is not designed to distinguish between <em>identities</em> within a class (e.g., "This is Raj" vs "This is John"). Retraining YOLO to recognize specific faces requires thousands of labeled images of that person, completely defeating our goal of "Zero-Shot" recognition from a single selfie.</p>
+
+    <h3>Why didn't we use Haar Cascades?</h3>
+    <p><strong>What is it?</strong> An older, traditional computer vision algorithm from 2001 used by digital cameras to draw boxes around faces.</p>
+    <p><strong>Why we rejected it:</strong> Haar Cascades are very fast but highly inaccurate. They fail if the person turns their head slightly to the side, looks down, or if the lighting is poor. For a security pipeline, we required robust facial detection at various angles, which MTCNN handles flawlessly.</p>
+
+    <h3>Why didn't we use standard DeepFace?</h3>
+    <p><strong>What is it?</strong> A popular Python library that wraps multiple facial recognition models into one tool.</p>
+    <p><strong>Why we rejected it:</strong> DeepFace is highly abstracted and acts as a "black box." It is excellent for simple scripts, but for an advanced tracking pipeline, it proved too slow for real-time video processing. By building our pipeline directly in raw <strong>PyTorch</strong> using `facenet-pytorch`, we gained granular control over tensor processing, allowing us to load data directly onto the GPU for maximum speed.</p>
+
+    <div class="page-break"></div>
+
+    <!-- DIFFICULTIES FACED -->
+    <h2>5. Technical Difficulties and Challenges Faced</h2>
+    <p>Building a production-ready AI pipeline is rarely straightforward. Throughout the internship, several major technical hurdles had to be overcome:</p>
+
+    <h3>1. The "Washing Out" of Faces in Security Footage</h3>
+    <p><strong>The Problem:</strong> CCTV cameras are often mounted high up, facing bright lights, leading to severe shadows on faces. FaceNet would fail to recognize the person because half their face was pitch black.</p>
+    <p><strong>The Solution:</strong> I implemented <strong>CLAHE (Contrast Limited Adaptive Histogram Equalization)</strong>. Instead of just brightening the whole image, CLAHE divides the face into an 8x8 grid and balances the light locally in each tile. This mathematically rescued lost facial features from the shadows before feeding them to the AI.</p>
+
+    <h3>2. Cloud Deployment and Streamlit Timeout Errors</h3>
+    <p><strong>The Problem:</strong> When deploying the web application to Streamlit Cloud to make it publicly accessible, the system would crash with an "OOM" (Out of Memory) error or a WebSocket Connection Timeout.</p>
+    <p><strong>The Solution:</strong> The PyTorch library automatically tried to download the massive CUDA GPU files on a CPU cloud server. I had to strictly define the CPU-only wheels in the `requirements.txt` and wrap our UI elements in timeout-safe functions to prevent the cloud server from hanging while downloading the 1.5GB `vggface2` weights.</p>
+
+    <h3>3. False Positives in Crowded Environments</h3>
+    <p><strong>The Problem:</strong> In environments with multiple people, if a stranger walked past the camera looking somewhat similar to the target, the system would occasionally jump to the wrong person.</p>
+    <p><strong>The Solution:</strong> I implemented the <strong>Twin-Mode Logic and Euclidean Thresholding</strong>. By strictly setting the Euclidean Distance threshold to <code>0.85</code> (meaning the math had to be a near-perfect match) and requiring 5 consecutive frames of matching before achieving a "LOCK", false positives were almost entirely eliminated.</p>
+
+    <div class="page-break"></div>
+
+    <!-- GRAPHICS AND CODE SECTION -->
+    <h2>6. Graphical Results and Code Architecture</h2>
+    
+    <p>Below are placeholders where graphical outputs demonstrating the Euclidean Distance convergence and the accuracy metrics of the model over time should be attached.</p>
+
+    <div class="placeholder-box">
+        <svg class="w-12 h-12 mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        <p class="font-bold">PASTE ACCURACY GRAPH SCREENSHOT HERE</p>
+        <p class="text-sm mt-2">Displaying the loss/distance metrics converging over video frames.</p>
+    </div>
+
+    <h3>Highlight of Core Implementation Code (`app.py`)</h3>
+    <p>The core of the system relies on safely processing every frame mathematically. The snippet below highlights the Euclidean distance verification logic:</p>
+
+<pre class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm my-4"><code>
+# Extract mathematical embeddings from the live CCTV frame
+with torch.no_grad():
+    embedding = resnet(preprocess(enhanced_rgb).unsqueeze(0).to(device))
+
+# Calculate the straight-line distance in 512-D space
+distance = torch.dist(master_embedding, embedding).item()
+
+# Verification Logic
+if distance < EUCLIDEAN_THRESHOLD:
+    cv2.rectangle(frame_bgr, (x1, y1), (x2, y2), (0, 255, 0), 3)
+    cv2.putText(frame_bgr, f"MATCH ({distance:.2f})", ... )
+    tracked_frames_count += 1
+</code></pre>
+
+    <p>This approach bypasses the need for re-training a neural network, allowing instantaneous tracking.</p>
+
+    <div class="page-break"></div>
+
+    <!-- FUTURE IMPROVEMENTS -->
+    <h2>7. Future Research and Trajectory</h2>
+    <p>Because this project was developed under the academic guidance of Dr. Mahapara K., establishing a roadmap for future research is critical. While the current pipeline is highly effective, the following improvements are targeted for v3.0:</p>
+
+    <ul class="list-disc pl-6 space-y-4">
+        <li>
+            <strong>Temporal Smoothing using Kalman Filters:</strong><br>
+            Currently, if the target walks behind a pillar for 1 second, the tracking box disappears and reappears. By implementing a Kalman Filter (a mathematical algorithm that predicts the future trajectory of an object), the AI will be able to guess where the person is behind the pillar, keeping the tracking box completely smooth.
+        </li>
+        <li>
+            <strong>Transitioning to Vision Transformers (ViT):</strong><br>
+            FaceNet is based on a Convolutional Neural Network (CNN). In recent years, Transformer architectures (the same technology behind ChatGPT) have proven highly capable in computer vision (Vision Transformers). Future builds will test ViT-based feature extractors to see if they can map faces more accurately under severe angles.
+        </li>
+        <li>
+            <strong>Edge-Device Deployment (TensorRT):</strong><br>
+            To run this on actual Raspberry Pi or CCTV cameras in real-time, the PyTorch models must be compiled down using NVIDIA TensorRT. This optimizes the neural weights to run significantly faster on low-power devices.
+        </li>
+    </ul>
+
+    <div class="page-break"></div>
+
+    <!-- STUDY GUIDE -->
+    <h2>8. Study Guide & Q/A for Presentations</h2>
+    <p>Use these answers to perfectly respond to any questions during an internship defense or recruiter interview.</p>
+
+    <div class="mt-6 space-y-6">
+        <div class="bg-gray-50 border border-gray-200 p-5 rounded-lg">
+            <p class="font-bold text-lg text-gray-900">Q1: How does your system recognize people without being trained on their specific faces beforehand?</p>
+            <p class="mt-2 text-gray-700"><strong>Answer:</strong> "The system utilizes <em>Zero-Shot Learning</em> via FaceNet. FaceNet wasn't trained to recognize 'Raj' or 'John', it was trained on millions of faces to learn <em>how to measure the geometric differences between human faces</em>. When I give it a photo, it extracts 512 structural measurements. It then does the same for the CCTV video. By calculating the Euclidean distance between these two lists of measurements, it can verify a match without any prior training."</p>
+        </div>
+
+        <div class="bg-gray-50 border border-gray-200 p-5 rounded-lg">
+            <p class="font-bold text-lg text-gray-900">Q2: Why did you use MTCNN instead of OpenCV's default face detector (Haar Cascades)?</p>
+            <p class="mt-2 text-gray-700"><strong>Answer:</strong> "Haar Cascades look for contrasting pixel patterns (like eyes being darker than cheeks) and fail easily if the lighting is bad or the face is tilted. MTCNN is a deep learning model that looks for actual structural facial landmarks (eyes, nose, mouth). It is vastly more accurate and robust for unconstrained environments."</p>
+        </div>
+
+        <div class="bg-gray-50 border border-gray-200 p-5 rounded-lg">
+            <p class="font-bold text-lg text-gray-900">Q3: I see you implemented something called CLAHE. What does it do and why is it there?</p>
+            <p class="mt-2 text-gray-700"><strong>Answer:</strong> "CLAHE stands for Contrast Limited Adaptive Histogram Equalization. When dealing with CCTV footage, faces are often washed out by glare or hidden in shadows. A standard neural network might fail to extract features from a shadowed face. CLAHE acts as an algorithmic preprocessing step that balances the lighting across the face in a grid-like pattern, feeding the AI a perfectly lit image."</p>
+        </div>
+        
+        <div class="bg-gray-50 border border-gray-200 p-5 rounded-lg">
+            <p class="font-bold text-lg text-gray-900">Q4: If the person is only on screen for 2 seconds, your system generates a slow-motion video. How?</p>
+            <p class="mt-2 text-gray-700"><strong>Answer:</strong> "During the loop, whenever the Euclidean distance confirms a lock, I save that specific frame to an array. At the end of processing, if the total tracked time is less than 3 seconds, I pass that array of saved frames into the <code>imageio</code> library and instruct it to write a new video file at 25% of the original framerate. This creates an automatic highlight reel playing 4 times slower, ensuring the security operator doesn't miss brief appearances."</p>
+        </div>
+    </div>
+
+</body>
+</html>
