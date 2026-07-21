@@ -215,7 +215,7 @@ elif selected == "Live Demo":
     
     upload_col1, upload_col2 = st.columns(2)
     with upload_col1:
-        ref_files = st.file_uploader("Upload Master Vector (Target Selfies)", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
+        ref_files = st.file_uploader("Upload Master Vector (Target Selfies)", type=["jpg", "png", "jpeg", "webp"], accept_multiple_files=True)
     with upload_col2:
         video_file = st.file_uploader("Upload CCTV Feed (.mp4)", type=["mp4", "avi"])
         
@@ -236,9 +236,9 @@ elif selected == "Live Demo":
             st.error("⚠️ SYSTEM HALT: Please provide Master Vector images and a Target Video.")
         else:
             if CONDITION == 2:
-                REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 1, 15, 0.87
+                REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 1, 15, 0.95 # Highly forgiving for paparazzi/CCTV
             else:
-                REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 5, 40, 0.85
+                REQUIRED_FRAMES, MIN_FACE_SIZE, EUCLIDEAN_THRESHOLD = 5, 40, 0.85 # Strict Bank-Vault Math
 
             st.markdown("<div class='glass-card' style='text-align:center;'>", unsafe_allow_html=True)
             st.markdown("<h3 style='color:#00f2fe;'>Initializing PyTorch Tensor Cores...</h3>", unsafe_allow_html=True)
@@ -262,7 +262,7 @@ elif selected == "Live Demo":
                 if boxes is None: return []
                 faces = []
                 for i in range(len(boxes)):
-                    if probs[i] > 0.90:
+                    if probs[i] > 0.70: # Lowered confidence gate for blurry CCTV
                         faces.append({'box': boxes[i].astype(int), 'confidence': probs[i]})
                 return faces
 
