@@ -198,7 +198,7 @@ elif selected == "Live Demo":
         if not ref_files or not video_file:
             st.error("⚠️ SYSTEM HALT: Please provide Master Vector images and a Target Video.")
         else:
-            COSINE_THRESHOLD = 0.30 # High tolerance threshold for PyTorch Cosine Similarity
+            COSINE_THRESHOLD = 0.15 # Ultra-high tolerance for CCTV ReID
             
             st.markdown("<div class='glass-card' style='text-align:center;'>", unsafe_allow_html=True)
             st.markdown("<h3 style='color:#00f2fe;'>Initializing YOLOv8 ReID Surveillance Pipeline...</h3>", unsafe_allow_html=True)
@@ -208,7 +208,7 @@ elif selected == "Live Demo":
             @st.cache_resource
             def load_models():
                 # 1. Identity Verification Model
-                detector = facenet_pytorch.MTCNN(thresholds=[0.6, 0.7, 0.7], keep_all=True, device=device)
+                detector = facenet_pytorch.MTCNN(thresholds=[0.6, 0.7, 0.7], keep_all=True, device=device, min_face_size=10)
                 resnet = facenet_pytorch.InceptionResnetV1(pretrained='vggface2').eval().to(device)
                 preprocess = transforms.Compose([
                     transforms.ToPILImage(), transforms.Resize((160, 160)),
@@ -315,7 +315,11 @@ elif selected == "Live Demo":
                             x1, y1, x2, y2 = box.astype(int)
                             x, y = max(0, x1), max(0, y1)
                             w, h = x2 - x1, y2 - y1
-                            body_crop = frame_rgb[y:y+h, x:x+w]
+                            
+                            # Expand YOLO box upwards to ensure head isn't cut off
+                            y_exp = max(0, int(y - h * 0.2))
+                            body_crop = frame_rgb[y_exp:y+h, x:x+w]
+                            
                             if body_crop.size == 0: continue
                             
                             face_boxes, probs = face_detector.detect(body_crop)
