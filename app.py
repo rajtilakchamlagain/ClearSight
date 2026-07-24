@@ -301,49 +301,38 @@ elif selected == "Live Demo":
             status_text.text(f"Tracklet Database built! Found {len(tracklets)} unique people. Analyzing statistics...")
             
             # Phase 4: Z-Score Statistical Anomaly Thresholding
-            scores = {}
+            # Phase 4: DYNAMIC TRACKLET LINKING
+            TARGET_IDS = set()
+            best_screenshots = []
+            
             def cosine_sim(a, b):
                 a = a / np.linalg.norm(a)
                 b = b / np.linalg.norm(b)
                 return np.dot(a, b)
-                
-            for track_id, data in tracklets.items():
-                if data.get('best_face_embedding') is not None:
-                    score = cosine_sim(master_vector, data['best_face_embedding'])
-                    scores[track_id] = score
-                    
-            TARGET_IDS = set()
-            best_screenshots = []
             
-            if scores:
-                score_values = list(scores.values())
-                mean_score = np.mean(score_values)
-                std_score = np.std(score_values) if np.std(score_values) > 0 else 0.01
+            if tracklets:
+                # 1. Compare all tracklets against the Reference Image
+                scores = {}
+                for track_id, data in tracklets.items():
+                    if data.get('best_face_embedding') is not None:
+                        scores[track_id] = cosine_sim(master_vector, data['best_face_embedding'])
                 
-                best_id = max(scores, key=scores.get)
-                best_score = scores[best_id]
-                z_score = (best_score - mean_score) / std_score
-                
-                if z_score >= 1.5 or best_score >= 0.25:
+                if scores:
+                    best_id = max(scores, key=scores.get)
                     TARGET_IDS.add(best_id)
-                    st.success(f"🎯 POSITIVE ID: Suspect mathematically verified as Tracklet #{best_id}! (Z-Score: {z_score:.2f})")
+                    video_anchor_vector = tracklets[best_id]['best_face_embedding']
                     
-                    # Check if there are other Tracklets that are ALSO the suspect (if YOLO lost tracking and assigned a new ID)
-                    # FIX: Make the secondary threshold extremely strict to avoid pulling in false positives 
-                    # standing right next to the target in crowds.
-                    # Use a tighter margin for lower scores to avoid lookalikes when confidence is low
-                    margin = 0.05 * (best_score ** 2) if best_score < 0.5 else 0.05
-                    DYNAMIC_THRESHOLD = max(mean_score + (3.0 * std_score), best_score - margin)
-                    for track_id, score in scores.items():
-                        if track_id != best_id and score >= DYNAMIC_THRESHOLD:
-                            TARGET_IDS.add(track_id)
-                            st.success(f"🎯 POSITIVE ID: Secondary Tracklet #{track_id} also verified!")
-                            
+                    # 2. Compare remaining tracklets against the Video Anchor (The best match in the video)
+                    # This solves YOLO losing tracking during occlusions.
+                    for track_id, data in tracklets.items():
+                        if track_id != best_id and data.get('best_face_embedding') is not None:
+                            anchor_score = cosine_sim(video_anchor_vector, data['best_face_embedding'])
+                            if anchor_score >= 0.70: # High threshold because they are from the same video/lighting
+                                TARGET_IDS.add(track_id)
+                                st.success(f"🎯 POSITIVE ID: Secondary Tracklet #{track_id} also verified!")
+                    
                     for tid in TARGET_IDS:
                         if len(best_screenshots) < 3 and tracklets[tid]['best_face_img'] is not None:
-                            best_screenshots.append((scores[tid], cv2.cvtColor(tracklets[tid]['best_face_img'], cv2.COLOR_BGR2RGB)))
-                else:
-                    st.warning("❌ NEGATIVE ID: The suspect is NOT in this video. No statistical anomaly found.")
             else:
                 st.warning("⚠️ No faces detected in the entire video to analyze.")
 
