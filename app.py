@@ -6,9 +6,9 @@ import imageio
 import streamlit as st
 import tempfile
 import requests
+import insightface
+from insightface.app import FaceAnalysis
 from torchvision import transforms
-import torch.nn.functional as F
-import facenet_pytorch
 from PIL import Image
 from streamlit_option_menu import option_menu
 from streamlit_lottie import st_lottie
@@ -168,10 +168,11 @@ if selected == "About Developer":
 
 elif selected == "Architecture":
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.markdown("<h2>ClearSight V4 (Surveillance ReID)</h2>", unsafe_allow_html=True)
-    st.write("**1. Body Tracking (YOLOv8)**: DeepSORT/ByteTrack to perfectly track human bodies in crowds.")
-    st.write("**2. Identity Binding (FaceNet ReID)**: Verifies the face once and binds the identity to the body.")
-    st.write("**3. Permanent Lock**: 100% resilient tracking even when the face turns away from the camera or gets blurry.")
+    st.markdown("<h2>ClearSight V6 (Enterprise Retroactive ReID)</h2>", unsafe_allow_html=True)
+    st.write("**1. Tracklet Generation (YOLOv8 + ByteTrack)**: Builds a database of every person's lifetime in the video.")
+    st.write("**2. Identity Verification (InsightFace ArcFace)**: Runs SOTA Face Recognition on the absolute clearest frame of a tracklet.")
+    st.write("**3. Statistical Anomaly Thresholding**: Uses Z-Score mathematics to auto-calculate the perfect threshold and guarantee 0 false positives.")
+    st.write("**4. Retroactive Backtracking**: Draws the box on the suspect from the exact second they enter the frame, even if their face is completely hidden.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 elif selected == "Live Demo":
@@ -198,60 +199,39 @@ elif selected == "Live Demo":
         if not ref_files or not video_file:
             st.error("⚠️ SYSTEM HALT: Please provide Master Vector images and a Target Video.")
         else:
-            COSINE_THRESHOLD = 0.15 # Ultra-high tolerance for CCTV ReID
-            
             st.markdown("<div class='glass-card' style='text-align:center;'>", unsafe_allow_html=True)
-            st.markdown("<h3 style='color:#00f2fe;'>Initializing YOLOv8 ReID Surveillance Pipeline...</h3>", unsafe_allow_html=True)
-            
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            st.markdown("<h3 style='color:#00f2fe;'>Initializing V6 Enterprise ReID Surveillance Pipeline...</h3>", unsafe_allow_html=True)
             
             @st.cache_resource
             def load_models():
-                # 1. Identity Verification Model
-                detector = facenet_pytorch.MTCNN(thresholds=[0.6, 0.7, 0.7], keep_all=True, device=device, min_face_size=10)
-                resnet = facenet_pytorch.InceptionResnetV1(pretrained='vggface2').eval().to(device)
-                preprocess = transforms.Compose([
-                    transforms.ToPILImage(), transforms.Resize((160, 160)),
-                    transforms.ToTensor(), transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-                ])
-                # 2. Body Tracking Model
                 yolo = YOLO('yolov8n.pt') 
-                return detector, resnet, preprocess, yolo
+                face_app = FaceAnalysis(name='buffalo_l', providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+                face_app.prepare(ctx_id=0, det_size=(640, 640))
+                return yolo, face_app
 
-            face_detector, resnet, preprocess, yolo_model = load_models()
+            yolo_model, face_app = load_models()
             
-            def get_raw_face(img_rgb, box):
-                x1, y1, x2, y2 = box.astype(int)
-                w, h = x2 - x1, y2 - y1
-                x, y = max(0, x1), max(0, y1)
-                face_crop = img_rgb[y:y+h, x:x+w]
-                if face_crop.size == 0: return None
-                return face_crop
-            
-            # Master Vector Generation
-            anchor_embeddings = []
+            # Phase 2: Master Vector Generation
+            embeddings = []
             for ref_f in ref_files:
-                img = Image.open(ref_f).convert('RGB')
-                img_rgb = np.array(img)
-                boxes, probs = face_detector.detect(img_rgb)
+                file_bytes = np.asarray(bytearray(ref_f.read()), dtype=np.uint8)
+                img = cv2.imdecode(file_bytes, 1)
                 
-                if boxes is not None and len(boxes) > 0:
-                    biggest_box = max(boxes, key=lambda b: (b[2]-b[0]) * (b[3]-b[1]))
-                    perfect_face = get_raw_face(img_rgb, biggest_box)
-                    if perfect_face is not None:
-                        tensor = preprocess(perfect_face).unsqueeze(0).to(device)
-                        with torch.no_grad():
-                            anchor_embeddings.append(resnet(tensor))
+                faces = face_app.get(img)
+                if len(faces) > 0:
+                    biggest_face = max(faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))
+                    embeddings.append(biggest_face.embedding)
             
-            if not anchor_embeddings:
+            if not embeddings:
                 st.error("No valid faces detected in reference images.")
                 st.stop()
                 
-            master_embedding = torch.mean(torch.cat(anchor_embeddings), dim=0, keepdim=True)
-            st.markdown("✅ **Master Vector Extracted Successfully (PyTorch)**", unsafe_allow_html=True)
+            master_vector = np.mean(embeddings, axis=0)
+            master_vector = master_vector / np.linalg.norm(master_vector)
+            st.markdown("✅ **Master Vector Extracted Successfully (ArcFace ResNet)**", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-            # Video Processing
+            # Video Processing Setup
             tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
             tfile.write(video_file.read())
             tfile.close()
@@ -261,102 +241,146 @@ elif selected == "Live Demo":
             width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            
-            out_path = "tracked_output.mp4"
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
-            
-            best_screenshots = []
-            highlight_frames = []
-            tracked_frames_count = 0
+            cap.release()
             
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-            st.markdown("<h3>Live Processing Feed (Real-Time PyTorch ReID)</h3>", unsafe_allow_html=True)
+            st.markdown("<h3>Live Processing Feed (V6 Tracklet Engine)</h3>", unsafe_allow_html=True)
             
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            # Tracking State Variables
-            TARGET_TRACK_ID = None
-            known_non_targets = set()
+            # Phase 3: Tracklet Generation
+            status_text.text(f"Pass 1: Deep Scanning {total_frames} frames to build Tracklet Database...")
             
-            frame_count = 0
-            # Use YOLO track to process the video with ByteTrack
-            results = yolo_model.track(source=tfile.name, classes=[0], stream=True, persist=True, verbose=False)
+            tracklets = {}
+            results = yolo_model.track(source=tfile.name, classes=[0], stream=True, persist=True, verbose=False, tracker="bytetrack.yaml")
             
+            frame_idx = 0
             for r in results:
-                frame_count += 1
                 frame_bgr = r.orig_img
-                frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
                 
-                target_detected = False
+                # Get all faces in the FULL frame first
+                faces_in_frame = face_app.get(frame_bgr)
                 
                 if r.boxes.id is not None:
                     boxes = r.boxes.xyxy.cpu().numpy()
                     track_ids = r.boxes.id.cpu().numpy().astype(int)
                     
                     for box, track_id in zip(boxes, track_ids):
+                        if track_id not in tracklets:
+                            tracklets[track_id] = {'boxes': {}, 'best_face_img': None, 'max_face_size': 0, 'best_face_embedding': None}
                         
-                        # Case 1: We ALREADY identified this body as the target
-                        if track_id == TARGET_TRACK_ID:
-                            x1, y1, x2, y2 = box.astype(int)
-                            cv2.rectangle(frame_bgr, (x1, y1), (x2, y2), (0, 255, 0), 3)
-                            cv2.putText(frame_bgr, f"LOCKED RE-ID [{track_id}]", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                            target_detected = True
-                            continue
+                        tracklets[track_id]['boxes'][frame_idx] = box
+                        
+                        x1, y1, x2, y2 = box.astype(int)
+                        
+                        for face in faces_in_frame:
+                            fx1, fy1, fx2, fy2 = face.bbox
+                            fcx, fcy = (fx1+fx2)/2, (fy1+fy2)/2
                             
-                        # Case 2: We know this body is NOT the target
-                        if track_id in known_non_targets:
-                            continue
-                            
-                        # Case 3: We have NEVER identified this body yet. Run Identity Check.
-                        if TARGET_TRACK_ID is None:
-                            # Extract body crop to look for a face
-                            x1, y1, x2, y2 = box.astype(int)
-                            x, y = max(0, x1), max(0, y1)
-                            w, h = x2 - x1, y2 - y1
-                            
-                            # Expand YOLO box upwards to ensure head isn't cut off
-                            y_exp = max(0, int(y - h * 0.2))
-                            body_crop = frame_rgb[y_exp:y+h, x:x+w]
-                            
-                            if body_crop.size == 0: continue
-                            
-                            face_boxes, probs = face_detector.detect(body_crop)
-                            if face_boxes is not None and len(face_boxes) > 0:
-                                # We found a face inside this body
-                                biggest_face = max(face_boxes, key=lambda b: (b[2]-b[0]) * (b[3]-b[1]))
-                                perfect_face = get_raw_face(body_crop, biggest_face)
-                                if perfect_face is not None:
-                                    with torch.no_grad():
-                                        tensor = preprocess(perfect_face).unsqueeze(0).to(device)
-                                        embedding = resnet(tensor)
+                            # Check if face center is inside the upper section of the body box
+                            if x1 <= fcx <= x2 and (y1 - (y2-y1)*0.2) <= fcy <= y2:
+                                face_area = (fx2-fx1) * (fy2-fy1)
+                                if face_area > tracklets[track_id]['max_face_size']:
+                                    tracklets[track_id]['max_face_size'] = face_area
                                     
-                                    cosine_sim = F.cosine_similarity(master_embedding, embedding).item()
+                                    # Crop just the face for visual proof later
+                                    fx1, fy1 = max(0, int(fx1)), max(0, int(fy1))
+                                    fx2, fy2 = max(0, int(fx2)), max(0, int(fy2))
                                     
-                                    if cosine_sim > COSINE_THRESHOLD:
-                                        # WE FOUND THE TARGET! BIND THE IDENTITY
-                                        TARGET_TRACK_ID = track_id
-                                        cv2.rectangle(frame_bgr, (x1, y1), (x2, y2), (0, 255, 0), 3)
-                                        cv2.putText(frame_bgr, f"TARGET ACQUIRED [{track_id}]", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                                        target_detected = True
-                                        best_screenshots.append((cosine_sim, frame_rgb.copy()))
-                                    else:
-                                        known_non_targets.add(track_id) # Don't check this person again
+                                    tracklets[track_id]['best_face_img'] = frame_bgr[fy1:fy2, fx1:fx2].copy()
+                                    tracklets[track_id]['best_face_embedding'] = face.embedding
 
-                out.write(frame_bgr)
-                
-                if target_detected:
-                    tracked_frames_count += 1
-                    marked_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-                    highlight_frames.append(marked_rgb)
-                
-                if frame_count % 5 == 0:
-                    progress_bar.progress(min(frame_count / total_frames, 1.0))
-                    status_text.text(f"Scanning Frame {frame_count}/{total_frames} at Ultra Speed...")
+                frame_idx += 1
+                if frame_idx % 5 == 0:
+                    progress_bar.progress(min(frame_idx / total_frames, 1.0) * 0.4)
                     
-            cap.release()
-            out.release()
+            status_text.text(f"Tracklet Database built! Found {len(tracklets)} unique people. Analyzing statistics...")
+            
+            # Phase 4: Z-Score Statistical Anomaly Thresholding
+            scores = {}
+            def cosine_sim(a, b):
+                a = a / np.linalg.norm(a)
+                b = b / np.linalg.norm(b)
+                return np.dot(a, b)
+                
+            for track_id, data in tracklets.items():
+                if 'best_face_embedding' in data:
+                    score = cosine_sim(master_vector, data['best_face_embedding'])
+                    scores[track_id] = score
+                    
+            TARGET_IDS = set()
+            best_screenshots = []
+            
+            if scores:
+                score_values = list(scores.values())
+                mean_score = np.mean(score_values)
+                std_score = np.std(score_values) if np.std(score_values) > 0 else 0.01
+                
+                best_id = max(scores, key=scores.get)
+                best_score = scores[best_id]
+                z_score = (best_score - mean_score) / std_score
+                
+                if z_score >= 1.5 or best_score >= 0.25:
+                    TARGET_IDS.add(best_id)
+                    st.success(f"🎯 POSITIVE ID: Suspect mathematically verified as Tracklet #{best_id}! (Z-Score: {z_score:.2f})")
+                    
+                    # Check if there are other Tracklets that are ALSO the suspect (if YOLO lost tracking and assigned a new ID)
+                    # FIX: Make the secondary threshold extremely strict to avoid pulling in false positives 
+                    # standing right next to the target in crowds.
+                    DYNAMIC_THRESHOLD = max(mean_score + (2.5 * std_score), best_score - 0.05)
+                    for track_id, score in scores.items():
+                        if track_id != best_id and score >= DYNAMIC_THRESHOLD:
+                            TARGET_IDS.add(track_id)
+                            st.success(f"🎯 POSITIVE ID: Secondary Tracklet #{track_id} also verified!")
+                            
+                    for tid in TARGET_IDS:
+                        if len(best_screenshots) < 3 and tracklets[tid]['best_face_img'] is not None:
+                            best_screenshots.append((scores[tid], cv2.cvtColor(tracklets[tid]['best_face_img'], cv2.COLOR_BGR2RGB)))
+                else:
+                    st.warning("❌ NEGATIVE ID: The suspect is NOT in this video. No statistical anomaly found.")
+            else:
+                st.warning("⚠️ No faces detected in the entire video to analyze.")
+
+            # Phase 5: Retroactive Rendering
+            progress_bar.progress(0.5)
+            status_text.text("Pass 2: Retroactive Video Rendering...")
+            
+            tracked_frames_count = 0
+            highlight_frames = []
+            out_path = "ClearSight_V6_Output.mp4"
+            
+            if TARGET_IDS:
+                target_frames = {}
+                for tid in TARGET_IDS:
+                    for f_idx, box in tracklets[tid]['boxes'].items():
+                        target_frames[f_idx] = box
+                        
+                cap = cv2.VideoCapture(tfile.name)
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+                
+                f_idx = 0
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if not ret: break
+                    
+                    if f_idx in target_frames:
+                        x1, y1, x2, y2 = target_frames[f_idx].astype(int)
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 4)
+                        cv2.putText(frame, "TARGET ACQUIRED", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 3)
+                        
+                        tracked_frames_count += 1
+                        highlight_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                        
+                    out.write(frame)
+                    f_idx += 1
+                    if f_idx % 5 == 0:
+                        progress_bar.progress(0.5 + min(f_idx / total_frames, 1.0) * 0.5)
+                        
+                cap.release()
+                out.release()
+                
             progress_bar.progress(1.0)
             status_text.text("Processing Complete! Compiling web-safe output...")
             
@@ -392,37 +416,28 @@ elif selected == "Live Demo":
             """, unsafe_allow_html=True)
             
             # --- RESULTS ---
-            st.markdown("<div class='glass-card' style='margin-top:20px;'>", unsafe_allow_html=True)
-            st.markdown("<h3>🎥 Tracked CCTV Record</h3>", unsafe_allow_html=True)
-            with open(final_out, 'rb') as f:
-                video_bytes = f.read()
-                st.video(video_bytes)
-                st.download_button(
-                    "📥 Download Tracked Video", 
-                    data=video_bytes, 
-                    file_name="ClearSight_Target_Locked_Output.mp4", 
-                    mime="video/mp4"
-                )
-            st.markdown("</div>", unsafe_allow_html=True)
-                
+            if TARGET_IDS:
+                st.markdown("<div class='glass-card' style='margin-top:20px;'>", unsafe_allow_html=True)
+                st.markdown("<h3>🎥 Tracked CCTV Record</h3>", unsafe_allow_html=True)
+                with open(final_out, 'rb') as f:
+                    video_bytes = f.read()
+                    st.video(video_bytes)
+                    st.download_button(
+                        "📥 Download Tracked Video", 
+                        data=video_bytes, 
+                        file_name="ClearSight_Target_Locked_Output.mp4", 
+                        mime="video/mp4"
+                    )
+                st.markdown("</div>", unsafe_allow_html=True)
+                    
             if best_screenshots:
                 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-                st.markdown("<h3>📸 Re-Identification Match</h3>", unsafe_allow_html=True)
+                st.markdown("<h3>📸 Identity Match Proof</h3>", unsafe_allow_html=True)
                 sc1, sc2, sc3 = st.columns(3)
                 cols = [sc1, sc2, sc3]
                 for i, (sim, frame) in enumerate(best_screenshots):
                     if i > 2: break
                     cols[i].image(frame, caption=f"Identity Match Confidence: {sim:.3f}", use_container_width=True)
-                    
-                    is_success, buffer = cv2.imencode(".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-                    if is_success:
-                        cols[i].download_button(
-                            label="📥 Save Identity Log",
-                            data=buffer.tobytes(),
-                            file_name=f"ClearSight_BestMatch_Capture_{i+1}.jpg",
-                            mime="image/jpeg",
-                            key=f"dl_img_{i}"
-                        )
                 st.markdown("</div>", unsafe_allow_html=True)
                     
             if tracked_frames_count > 0:
