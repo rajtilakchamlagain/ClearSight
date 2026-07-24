@@ -258,9 +258,12 @@ elif selected == "Live Demo":
             frame_idx = 0
             for r in results:
                 frame_bgr = r.orig_img
-                
-                # Get all faces in the FULL frame first
-                faces_in_frame = face_app.get(frame_bgr)
+                # SPEED OPTIMIZATION: Only run heavy Face Recognition on every 3rd frame.
+                # YOLO continues tracking perfectly, but we just skip face extraction to save CPU time.
+                if frame_idx % 3 == 0:
+                    faces_in_frame = face_app.get(frame_bgr)
+                else:
+                    faces_in_frame = []
                 
                 if r.boxes.id is not None:
                     boxes = r.boxes.xyxy.cpu().numpy()
