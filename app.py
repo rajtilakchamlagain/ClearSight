@@ -327,12 +327,13 @@ elif selected == "Live Demo":
                     for track_id, data in tracklets.items():
                         if track_id != best_id and data.get('best_face_embedding') is not None:
                             anchor_score = cosine_sim(video_anchor_vector, data['best_face_embedding'])
-                            if anchor_score >= 0.70: # High threshold because they are from the same video/lighting
+                            if anchor_score >= 0.35: # Lowered threshold for robust tracking
                                 TARGET_IDS.add(track_id)
                                 st.success(f"🎯 POSITIVE ID: Secondary Tracklet #{track_id} also verified!")
                     
                     for tid in TARGET_IDS:
                         if len(best_screenshots) < 3 and tracklets[tid]['best_face_img'] is not None:
+                            best_screenshots.append((scores.get(tid, 0.0), tracklets[tid]['best_face_img']))
             else:
                 st.warning("⚠️ No faces detected in the entire video to analyze.")
 

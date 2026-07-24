@@ -6,5 +6,5 @@ echo.
 echo Starting the AI Engine in Streamlit...
 echo Please do not close this black window while using the app!
 echo.
-C:\Users\rajti\raj123\envs\clearsight\python.exe run_streamlit.py
+C:\Users\rajti\raj123\envs\clearsight\python.exe run_wrapper.py
 pause
