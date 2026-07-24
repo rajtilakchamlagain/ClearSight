@@ -305,7 +305,7 @@ elif selected == "Live Demo":
                 return np.dot(a, b)
                 
             for track_id, data in tracklets.items():
-                if 'best_face_embedding' in data:
+                if data.get('best_face_embedding') is not None:
                     score = cosine_sim(master_vector, data['best_face_embedding'])
                     scores[track_id] = score
                     
