@@ -331,7 +331,9 @@ elif selected == "Live Demo":
                     # Check if there are other Tracklets that are ALSO the suspect (if YOLO lost tracking and assigned a new ID)
                     # FIX: Make the secondary threshold extremely strict to avoid pulling in false positives 
                     # standing right next to the target in crowds.
-                    DYNAMIC_THRESHOLD = max(mean_score + (2.5 * std_score), best_score - 0.05)
+                    # Use a tighter margin for lower scores to avoid lookalikes when confidence is low
+                    margin = 0.05 * (best_score ** 2) if best_score < 0.5 else 0.05
+                    DYNAMIC_THRESHOLD = max(mean_score + (3.0 * std_score), best_score - margin)
                     for track_id, score in scores.items():
                         if track_id != best_id and score >= DYNAMIC_THRESHOLD:
                             TARGET_IDS.add(track_id)
