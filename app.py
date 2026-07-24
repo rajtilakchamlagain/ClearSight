@@ -350,6 +350,31 @@ elif selected == "Live Demo":
                     for f_idx, box in tracklets[tid]['boxes'].items():
                         target_frames[f_idx] = box
                         
+                # ---------------------------------------------------------
+                # Phase 4.5: TRACKLET INTERPOLATION (GAP FILLING)
+                # Smooths out gaps when YOLO loses tracking due to occlusion
+                # ---------------------------------------------------------
+                sorted_f_idxs = sorted(target_frames.keys())
+                interpolated_frames = target_frames.copy()
+                MAX_GAP = int(fps * 2) # Max 2 seconds of occlusion gap
+                
+                for i in range(len(sorted_f_idxs) - 1):
+                    f1 = sorted_f_idxs[i]
+                    f2 = sorted_f_idxs[i+1]
+                    gap = f2 - f1
+                    
+                    if 1 < gap <= MAX_GAP:
+                        box1 = np.array(target_frames[f1])
+                        box2 = np.array(target_frames[f2])
+                        # Interpolate boxes
+                        for j in range(1, gap):
+                            f_curr = f1 + j
+                            alpha = j / gap
+                            box_curr = (1 - alpha) * box1 + alpha * box2
+                            interpolated_frames[f_curr] = box_curr
+                
+                target_frames = interpolated_frames
+                # ---------------------------------------------------------
                 cap = cv2.VideoCapture(tfile.name)
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
