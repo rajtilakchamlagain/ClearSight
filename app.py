@@ -275,21 +275,39 @@ if ref_files and video_file:
                         
                     tracklets[tid]['boxes'][frame_idx] = (x1, y1, x2, y2)
                     
-                    for face in scene_faces:
-                        fx1, fy1, fx2, fy2 = face.bbox
-                        fcx, fcy = (fx1 + fx2) / 2.0, (fy1 + fy2) / 2.0
-                        if x1 <= fcx <= x2 and y1 <= fcy <= y2:
-                            emb = face.embedding / (np.linalg.norm(face.embedding) + 1e-6)
-                            f_sim = cosine_sim(master_face, emb) if master_face is not None else 0.0
-                            tracklets[tid]['face_sims'].append(f_sim)
-                            
-                            if len(tracklets[tid]['proofs']) < 5:
-                                crop_img = orig_bgr[y1:y2, x1:x2].copy()
-                                tracklets[tid]['proofs'].append((f_sim, crop_img))
+                # Exclusive Top-Center Biometric Attribution: Each face is assigned strictly to ONE pedestrian body box whose head region matches best
+                for face in scene_faces:
+                    fx1, fy1, fx2, fy2 = face.bbox
+                    fcx, fcy = (fx1 + fx2) / 2.0, (fy1 + fy2) / 2.0
+                    
+                    best_tid = None
+                    best_dist = float('inf')
+                    for box, tid in zip(boxes, tids):
+                        bx1, by1, bx2, by2 = box
+                        if bx1 <= fcx <= bx2 and by1 <= fcy <= by2:
+                            # In human surveillance, a standing/walking person's face resides in the top 18% center of their bounding box
+                            body_top_cx = (bx1 + bx2) / 2.0
+                            body_top_cy = by1 + (by2 - by1) * 0.18
+                            dist = np.hypot(fcx - body_top_cx, fcy - body_top_cy)
+                            if dist < best_dist:
+                                best_dist = dist
+                                best_tid = tid
                                 
-                    if frame_idx % 5 == 0 and master_body is not None:
+                    if best_tid is not None and best_tid in tracklets:
+                        emb = face.embedding / (np.linalg.norm(face.embedding) + 1e-6)
+                        f_sim = cosine_sim(master_face, emb) if master_face is not None else 0.0
+                        tracklets[best_tid]['face_sims'].append(f_sim)
+                        
+                        if len(tracklets[best_tid]['proofs']) < 5:
+                            bx1, by1, bx2, by2 = tracklets[best_tid]['boxes'][frame_idx]
+                            crop_img = orig_bgr[by1:by2, bx1:bx2].copy()
+                            tracklets[best_tid]['proofs'].append((f_sim, crop_img))
+                            
+                for box, tid in zip(boxes, tids):
+                    if frame_idx % 5 == 0 and master_body is not None and tid in tracklets:
+                        bx1, by1, bx2, by2 = tracklets[tid]['boxes'][frame_idx]
                         try:
-                            crop_rgb = cv2.cvtColor(orig_bgr[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
+                            crop_rgb = cv2.cvtColor(orig_bgr[by1:by2, bx1:bx2], cv2.COLOR_BGR2RGB)
                             tensor = img_transform(crop_rgb).unsqueeze(0).to(device)
                             with torch.no_grad():
                                 b_vec = body_embedder(tensor).cpu().numpy().flatten()
@@ -298,8 +316,8 @@ if ref_files and video_file:
                         except Exception:
                             pass
 
-            # --- PHASE 3: BIOMETRIC PRECEDENCE TARGET ACQUISITION ---
-            status_text.markdown("🔷 **Phase 3:** Executing Biometric Target Discovery & Zero-Hallucination Veto...")
+            # --- PHASE 3: BIOMETRIC PRECEDENCE & SIMULTANEOUS EXISTENCE VETO ---
+            status_text.markdown("🔷 **Phase 3:** Executing Biometric Exclusivity & Simultaneous Existence Veto...")
             progress_bar.progress(0.70)
             
             TARGET_IDS = set()
@@ -312,21 +330,31 @@ if ref_files and video_file:
                 max_face_per_id[tid] = peak_f
                 
             if max_face_per_id:
-                peak_overall_id = max(max_face_per_id, key=max_face_per_id.get)
-                peak_sim = max_face_per_id[peak_overall_id]
+                # Sort candidate trajectories by peak biometric similarity in descending order
+                sorted_candidates = sorted(max_face_per_id.items(), key=lambda x: x[1], reverse=True)
+                peak_sim = sorted_candidates[0][1] if sorted_candidates else 0.0
                 
-                # Dynamic auto-thresholding without user tuning knobs
                 auto_floor = max(peak_sim * 0.72, 0.15) if peak_sim >= 0.15 else 0.25
+                anchor_frames_claimed = set()
                 
-                for tid, sim in max_face_per_id.items():
-                    if sim >= auto_floor:
-                        TARGET_IDS.add(tid)
+                for tid, sim in sorted_candidates:
+                    if sim < auto_floor:
+                        continue
+                    cand_frames = set(tracklets[tid]['boxes'].keys())
+                    
+                    # Rule of Exclusivity: A physical person cannot exist in two separate trajectories simultaneously in the exact same frames
+                    if len(anchor_frames_claimed.intersection(cand_frames)) > 1:
+                        continue
+                        
+                    TARGET_IDS.add(tid)
+                    anchor_frames_claimed.update(cand_frames)
                         
             # Backup mode if zero faces appeared in the entire video
             if not TARGET_IDS and master_body is not None:
                 for tid, data in tracklets.items():
                     if max(data['body_sims'], default=0.0) >= 0.70:
                         TARGET_IDS.add(tid)
+                        break
             
             # --- PHASE 4: HIGH-PRECISION VIDEO RENDERING ---
             status_text.markdown("🔷 **Phase 4:** Rendering high-definition surveillance output video...")

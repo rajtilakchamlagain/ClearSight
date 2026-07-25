@@ -172,7 +172,7 @@ def test_video(name, vid_path, ref_path):
         print("FAILED: All trajectories filtered out as transient noise.")
         return
 
-    # 2. Industry-Standard Biometric-First Search
+    # 2. Industry-Standard Biometric Exclusivity & Simultaneous Existence Veto
     face_scores = {}
     for tid, data in tracklets.items():
         if len(data['boxes']) < 4:
@@ -184,13 +184,19 @@ def test_video(name, vid_path, ref_path):
         print("FAILED: No valid trajectories with features.")
         return
 
-    best_id = max(face_scores, key=face_scores.get)
-    f_max = face_scores[best_id]
+    sorted_candidates = sorted(face_scores.items(), key=lambda x: x[1], reverse=True)
+    f_max = sorted_candidates[0][1] if sorted_candidates else 0.0
     bio_threshold = max(f_max * 0.72, 0.15) if f_max >= 0.15 else 0.25
     
-    for tid, sim in face_scores.items():
+    anchor_frames_claimed = set()
+    for tid, sim in sorted_candidates:
         if sim >= bio_threshold:
+            cand_frames = set(tracklets[tid]['boxes'].keys())
+            if len(anchor_frames_claimed.intersection(cand_frames)) > 1:
+                print(f"  --> Rejected Overlapping Concurrent Track #{tid} (Face Sim: {sim:.4f} violated Simultaneous Existence Veto)")
+                continue
             TARGET_IDS.add(tid)
+            anchor_frames_claimed.update(cand_frames)
             print(f"  --> Confirmed Biometric Target Track #{tid} (Face Sim: {sim:.4f})")
             
     if not TARGET_IDS:
