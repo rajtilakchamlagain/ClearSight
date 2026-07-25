@@ -450,24 +450,24 @@ elif selected == "Live Demo":
                             anchor_frames.update(cand_frames)
                             
                     st.success(f"🛡️ Multi-Track Reconciliation Complete: Locked onto {len(TARGET_IDS)} validated target trajectories. All surrounding crowd bystanders & conflicting IDs suppressed.")
-                        
-                        # Gather identity proof snapshots from validated targets ONLY
-                        all_proofs = []
-                        for tid in TARGET_IDS:
-                            for area, emb, img in tracklets[tid]['proof_images']:
-                                sim = cosine_sim(master_face_vec, emb)
-                                all_proofs.append((sim, area, img))
-                        
-                        all_proofs.sort(key=lambda x: (x[0], x[1]), reverse=True)
-                        seen_hashes = set()
-                        for sim, _, img in all_proofs:
-                            if len(best_screenshots) < 4 and img is not None and img.size > 0:
-                                h = hash(img.tobytes()[:200])
-                                if h not in seen_hashes:
-                                    best_screenshots.append((sim, img))
-                                    seen_hashes.add(h)
-                    else:
-                        st.warning(f"⚠️ Target not confidently matched in footage (Highest match score {s_max:.2%} fell below safety rejection floor).")
+                    
+                    # Gather identity proof snapshots from validated targets ONLY
+                    all_proofs = []
+                    for tid in TARGET_IDS:
+                        for area, emb, img in tracklets[tid]['proof_images']:
+                            sim = cosine_sim(master_face_vec, emb)
+                            all_proofs.append((sim, area, img))
+                    
+                    all_proofs.sort(key=lambda x: (x[0], x[1]), reverse=True)
+                    seen_hashes = set()
+                    for sim, _, img in all_proofs:
+                        if len(best_screenshots) < 4 and img is not None and img.size > 0:
+                            h = hash(img.tobytes()[:200])
+                            if h not in seen_hashes:
+                                best_screenshots.append((sim, img))
+                                seen_hashes.add(h)
+                else:
+                    st.warning("⚠️ Target not confidently matched in footage (Peak biometric match fell below safety rejection floor).")
             else:
                 st.warning("⚠️ No human subjects detected in the entire video to analyze.")
 
