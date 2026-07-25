@@ -203,30 +203,7 @@ def test_video(name, vid_path, ref_path):
         print("  --> No confident target identified in video.")
         return
 
-    # 3. On-Scene Appearance Gallery (In-Video Scene Learning)
-    scene_body_gallery = []
-    scene_apparel_gallery = []
-    anchor_frames = set()
-    for tid in TARGET_IDS:
-        scene_body_gallery.extend(tracklets[tid]['body_gallery'])
-        scene_apparel_gallery.extend(tracklets[tid]['apparel_gallery'])
-        anchor_frames.update(tracklets[tid]['boxes'].keys())
-        
-    for cand_id, data in tracklets.items():
-        if cand_id in TARGET_IDS or len(data['boxes']) < 6:
-            continue
-        cand_frames = set(data['boxes'].keys())
-        if len(anchor_frames.intersection(cand_frames)) > 2:
-            continue
-        cand_face = face_scores.get(cand_id, 0.0)
-        if len(data['face_gallery']) > 0 and cand_face < min(0.14, bio_threshold * 0.85):
-            continue
-        sim_body = max([cosine_sim(cb, ab) for cb in data['body_gallery'] for ab in scene_body_gallery], default=0.0)
-        sim_apparel = max([cosine_sim(ca, aa) for ca in data['apparel_gallery'] for aa in scene_apparel_gallery], default=0.0)
-        if sim_body >= 0.72 and sim_apparel >= 0.72:
-            print(f"  --> Linked On-Scene ReID Track #{cand_id} (Body: {sim_body:.2f} | Apparel: {sim_apparel:.2f})")
-            TARGET_IDS.add(cand_id)
-            anchor_frames.update(cand_frames)
+    print(f"Target locked exclusively onto validated Biometric IDs: {TARGET_IDS}")
 
     print(f"Target locked onto validated IDs: {TARGET_IDS}")
 
