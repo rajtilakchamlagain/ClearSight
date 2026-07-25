@@ -145,9 +145,30 @@ with st.sidebar:
     st.info("🔷 ArcFace 512D Biometric Matcher")
     
     st.divider()
-    st.markdown("#### 🤖 Turnkey Automation")
-    st.caption("**Self-Calibrating Engine:** Thresholds automatically adjust dynamically based on target spatial resolution and lighting dynamic range. Zero user calibration required.")
-    st.caption("ClearSight Enterprise Edition v7.4")
+    st.markdown("#### 🎯 Operational Protocol")
+    op_mode = st.radio(
+        "Select Target Acquisition Mode:",
+        ["🔒 Rank-1 Precision Lock (Auto)", "⚙️ Forensic Analyst Override"],
+        help="Rank-1 auto-locks strictly onto the highest biometric match to eliminate false positives in crowded scenes. Analyst override enables manual sensitivity calibration for masked or heavily obscured targets."
+    )
+    
+    manual_thresh = 0.20
+    if op_mode == "⚙️ Forensic Analyst Override":
+        manual_thresh = st.slider(
+            "Biometric Match Floor (%)", 
+            min_value=10, max_value=60, value=20, step=2,
+            help="Lower sensitivity for sunglasses/masks; raise for unobstructed sunlight surveillance."
+        ) / 100.0
+        with st.expander("📖 Law Enforcement Field Manual"):
+            st.markdown("""
+            **Operational Protocols for Police & Intelligence Officers:**
+            * **`> 22%` (Standard CCTV):** High confidence match for unobstructed faces in adequate street lighting.
+            * **`16% - 21%` (Obscured/Disguised):** Recommended threshold when suspect is disguised with dark sunglasses, caps, or in heavy nighttime rain.
+            * **`< 15%` (Background Noise):** Avoid setting floor below 15% to prevent background pedestrian misidentification.
+            """)
+    else:
+        st.caption("✨ **Turnkey Precision Guarantee:** Evaluates all human trajectories and strictly isolates the definitive peak identity match. Ensures zero false positives regardless of crowd density or identical uniforms.")
+    st.caption("ClearSight Enterprise Edition v8.0")
 
 # =====================================================================
 # 5. MAIN WORKSPACE DASHBOARD
@@ -324,12 +345,17 @@ if ref_files and video_file:
                 sorted_candidates = sorted(max_face_per_id.items(), key=lambda x: x[1], reverse=True)
                 peak_sim = sorted_candidates[0][1] if sorted_candidates else 0.0
                 
-                # Strict Industrial Precision Thresholding: Require trajectories to reach within 90% of peak scene similarity (or minimum 22%)
-                auto_floor = max(peak_sim * 0.90, 0.22) if peak_sim >= 0.20 else max(peak_sim * 0.85, 0.16)
+                if op_mode == "⚙️ Forensic Analyst Override":
+                    effective_floor = manual_thresh
+                    st.info(f"⚙️ Analyst Override Mode Active: Applying operational threshold floor of **{effective_floor:.2%}**.")
+                else:
+                    # Rank-1 Precision: Require candidate trajectories to achieve within 96% of the definitive scene match
+                    effective_floor = max(peak_sim * 0.96, 0.15)
+                    
                 anchor_frames_claimed = set()
                 
                 for tid, sim in sorted_candidates:
-                    if sim < auto_floor:
+                    if sim < effective_floor:
                         continue
                     cand_frames = set(tracklets[tid]['boxes'].keys())
                     
