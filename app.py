@@ -270,22 +270,35 @@ elif selected == "Live Demo":
             
             # Phase 2: Master Vector Generation
             embeddings = []
+            body_embeddings = []
+            apparel_signatures = []
             for ref_f in ref_files:
                 file_bytes = np.asarray(bytearray(ref_f.read()), dtype=np.uint8)
                 img = cv2.imdecode(file_bytes, 1)
+                if img is None: continue
                 
                 faces = face_app.get(img)
                 if len(faces) > 0:
                     biggest_face = max(faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))
                     embeddings.append(biggest_face.embedding)
+                    
+                body_embeddings.append(extract_body_embedding(body_embedder, img))
+                apparel_signatures.append(extract_apparel_signature(img))
             
-            if not embeddings:
-                st.error("No valid faces detected in reference images.")
+            if not embeddings and not body_embeddings:
+                st.error("No valid biometric or visual features detected in reference images.")
                 st.stop()
                 
-            master_vector = np.mean(embeddings, axis=0)
-            master_vector = master_vector / np.linalg.norm(master_vector)
-            st.markdown("✅ **Master Vector Extracted Successfully (ArcFace ResNet)**", unsafe_allow_html=True)
+            master_face_vec = np.mean(embeddings, axis=0) if embeddings else np.zeros(512)
+            if np.linalg.norm(master_face_vec) > 0: master_face_vec = master_face_vec / np.linalg.norm(master_face_vec)
+            
+            master_body_vec = np.mean(body_embeddings, axis=0) if body_embeddings else np.zeros(1000)
+            if np.linalg.norm(master_body_vec) > 0: master_body_vec = master_body_vec / np.linalg.norm(master_body_vec)
+            
+            master_apparel_sig = np.mean(apparel_signatures, axis=0) if apparel_signatures else np.zeros(512)
+            if np.linalg.norm(master_apparel_sig) > 0: master_apparel_sig = master_apparel_sig / np.linalg.norm(master_apparel_sig)
+            
+            st.markdown("✅ **Master Hybrid Signatures Extracted Successfully (Face + Whole-Body + Apparel)**", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
             # Video Processing Setup
@@ -371,9 +384,9 @@ elif selected == "Live Demo":
                     if len(data['boxes']) < 5: # Prune short noise
                         continue
                         
-                    f_sim = max([cosine_sim(master_vector, emb) for _, emb in data['face_gallery']], default=0.0)
-                    b_sim = max([cosine_sim(master_vector[:1000], b_emb[:1000]) for b_emb in data['body_gallery']], default=0.0)
-                    a_sim = max([cosine_sim(master_vector[:512], a_emb[:512]) for a_emb in data['apparel_gallery']], default=0.0)
+                    f_sim = max([cosine_sim(master_face_vec, emb) for _, emb in data['face_gallery']], default=0.0)
+                    b_sim = max([cosine_sim(master_body_vec, b_emb) for b_emb in data['body_gallery']], default=0.0)
+                    a_sim = max([cosine_sim(master_apparel_sig, a_emb) for a_emb in data['apparel_gallery']], default=0.0)
                     
                     if len(data['face_gallery']) > 0 and f_sim >= 0.25:
                         score = 0.70 * f_sim + 0.15 * b_sim + 0.15 * a_sim
@@ -424,7 +437,7 @@ elif selected == "Live Demo":
                         all_proofs = []
                         for tid in TARGET_IDS:
                             for area, emb, img in tracklets[tid]['proof_images']:
-                                sim = cosine_sim(master_vector, emb)
+                                sim = cosine_sim(master_face_vec, emb)
                                 all_proofs.append((sim, area, img))
                         
                         all_proofs.sort(key=lambda x: (x[0], x[1]), reverse=True)
