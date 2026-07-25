@@ -47,10 +47,15 @@ def extract_apparel_signature(img_bgr):
     """Computes spatial upper/lower body HSV apparel signature invariant to camera orientation."""
     try:
         h, w = img_bgr.shape[:2]
-        if h < 10 or w < 10:
+        if h < 20 or w < 10:
             return np.zeros(96)
-        upper_img = img_bgr[0:int(h*0.55), :] # Shirt/Jersey
-        lower_img = img_bgr[int(h*0.55):, :]  # Shorts/Trousers/Shoes
+            
+        # Center-Crop Inner Torso Core (width 25% to 75%) to reject background crowds and lighting
+        x1, x2 = int(w * 0.25), int(w * 0.75)
+        core_bgr = img_bgr[:, x1:x2] if (x2 > x1 + 4) else img_bgr
+        
+        upper_img = core_bgr[int(h*0.15):int(h*0.55), :] # Shirt/Jersey core
+        lower_img = core_bgr[int(h*0.55):int(h*0.88), :] # Shorts/Trousers core
         
         sig = []
         for part in [upper_img, lower_img]:
@@ -178,24 +183,28 @@ def test_video(name, vid_path, ref_path):
         
     TARGET_IDS.add(best_id)
     
-    # 3. Whole-Body ReID with Forensic Biometric Veto (Industrial Target Search Standard)
+    # 3. Whole-Body ReID with Forensic Biometric Veto & Temporal Exclusion (Industrial Standard)
+    anchor_frames = set(tracklets[best_id]['boxes'].keys())
     anchor_body_gallery = tracklets[best_id]['body_gallery']
     anchor_apparel_gallery = tracklets[best_id]['apparel_gallery']
     anchor_face_gallery = [emb for _, emb in tracklets[best_id]['face_gallery']]
     
-    dynamic_thresh = max(s_max * 0.82, 0.55)
-    print(f"  --> Strict Forensic ReID Threshold set to: {dynamic_thresh:.4f} (With Biometric Veto on non-matching faces)")
+    dynamic_thresh = max(s_max * 0.82, 0.65)
+    print(f"  --> Strict Forensic ReID Threshold set to: {dynamic_thresh:.4f} (With Biometric Veto & No-Teleportation Law)")
     
     for candidate_id, data in tracklets.items():
         if candidate_id == best_id or len(data['boxes']) < 8: # Ignore short duration noise (< ~0.3s)
             continue
         c_score, c_face, c_body, c_apparel = master_scores.get(candidate_id, (0.0, 0.0, 0.0, 0.0))
         
-        # FORENSIC BIOMETRIC VETO:
-        # In sports (like Messi) or crowded scenes, teammates wear identical jerseys. 
-        # If a tracklet clearly captured facial embeddings and the match to Reference Face is low (< 0.20),
-        # it is a different person wearing the same clothing! Veto immediately!
-        if len(data['face_gallery']) > 0 and c_face < 0.20:
+        # Rule 1: FORENSIC BIOMETRIC VETO
+        if len(data['face_gallery']) > 0 and c_face < 0.22:
+            continue
+            
+        # Rule 2: SIMULTANEOUS EXISTENCE VETO (No-Teleportation Law)
+        # A subject coexisting in the exact same frames as the confirmed primary anchor cannot be the target!
+        cand_frames = set(data['boxes'].keys())
+        if len(anchor_frames.intersection(cand_frames)) > 3:
             continue
             
         sim_to_anchor_body = max([cosine_sim(cb, ab) for cb in data['body_gallery'] for ab in anchor_body_gallery], default=0.0)
@@ -205,15 +214,18 @@ def test_video(name, vid_path, ref_path):
         if c_face >= 0.25 or sim_to_anchor_face >= 0.35:
             # Confirmed biometric facial similarity overrides everything
             anchor_match_score = 0.60 * max(c_face, sim_to_anchor_face) + 0.20 * sim_to_anchor_body + 0.20 * sim_to_anchor_apparel
+            best_overall_score = max(c_score, anchor_match_score)
+            if best_overall_score >= dynamic_thresh:
+                print(f"  --> Verified Target ReID Track #{candidate_id} (Score: {best_overall_score:.4f} | Face Match: {max(c_face, sim_to_anchor_face):.2f})")
+                TARGET_IDS.add(candidate_id)
         else:
-            # When face is invisible/away, demand high visual body & apparel fidelity
+            # Rule 3: STRICT NON-BIOMETRIC FLOOR
+            # Without face visibility, require high visual body & inner garment fidelity (>= 0.75)
             anchor_match_score = 0.50 * sim_to_anchor_body + 0.50 * sim_to_anchor_apparel
-            
-        best_overall_score = max(c_score, anchor_match_score)
-        
-        if best_overall_score >= dynamic_thresh:
-            print(f"  --> Verified Target ReID Track #{candidate_id} (Score: {best_overall_score:.4f} >= {dynamic_thresh:.4f} | Face: {c_face:.2f})")
-            TARGET_IDS.add(candidate_id)
+            best_overall_score = max(c_score, anchor_match_score)
+            if best_overall_score >= max(dynamic_thresh, 0.75) and sim_to_anchor_body >= 0.65 and sim_to_anchor_apparel >= 0.65:
+                print(f"  --> Verified Target ReID Track #{candidate_id} (Score: {best_overall_score:.4f} | Body+Apparel High Correlation)")
+                TARGET_IDS.add(candidate_id)
 
     print(f"Target locked onto validated IDs: {TARGET_IDS}")
 

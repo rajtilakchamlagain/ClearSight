@@ -39,13 +39,21 @@ def extract_body_embedding(model, crop_bgr):
         norm = np.linalg.norm(feat)
         return feat / norm if norm > 0 else feat
     except Exception:
-        return np.zeros(1000)
+        return np.zeros(576)
 
 def extract_apparel_signature(crop_bgr):
     try:
         h, w, _ = crop_bgr.shape
-        upper = crop_bgr[0:int(h*0.55), :]
-        lower = crop_bgr[int(h*0.55):, :]
+        if h < 20 or w < 10:
+            return np.zeros(512)
+            
+        # Center-Crop Inner Torso Core (width 25% to 75%) to reject background crowds and dark night street lighting
+        x1, x2 = int(w * 0.25), int(w * 0.75)
+        core_bgr = crop_bgr[:, x1:x2] if (x2 > x1 + 4) else crop_bgr
+        
+        # Upper shirt core (15% to 55% height), Lower trousers core (55% to 88% height to skip shoes/pavement)
+        upper = core_bgr[int(h*0.15):int(h*0.55), :]
+        lower = core_bgr[int(h*0.55):int(h*0.88), :]
         
         hsv_upper = cv2.cvtColor(upper, cv2.COLOR_BGR2HSV)
         hsv_lower = cv2.cvtColor(lower, cv2.COLOR_BGR2HSV)
@@ -263,6 +271,7 @@ elif selected == "Live Demo":
                 face_app = FaceAnalysis(name='buffalo_l', providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
                 face_app.prepare(ctx_id=0, det_size=(640, 640))
                 body_mod = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
+                body_mod.classifier = torch.nn.Identity() # Strip classification head for pure 576D structural embeddings
                 body_mod.eval()
                 return yolo, face_app, body_mod
 
@@ -292,7 +301,7 @@ elif selected == "Live Demo":
             master_face_vec = np.mean(embeddings, axis=0) if embeddings else np.zeros(512)
             if np.linalg.norm(master_face_vec) > 0: master_face_vec = master_face_vec / np.linalg.norm(master_face_vec)
             
-            master_body_vec = np.mean(body_embeddings, axis=0) if body_embeddings else np.zeros(1000)
+            master_body_vec = np.mean(body_embeddings, axis=0) if body_embeddings else np.zeros(576)
             if np.linalg.norm(master_body_vec) > 0: master_body_vec = master_body_vec / np.linalg.norm(master_body_vec)
             
             master_apparel_sig = np.mean(apparel_signatures, axis=0) if apparel_signatures else np.zeros(512)
@@ -402,20 +411,28 @@ elif selected == "Live Demo":
                         TARGET_IDS.add(best_id)
                         st.success(f"🎯 TARGET LOCKED: Established Primary Target Anchor #{best_id} with Industrial Hybrid Confidence (**{s_max:.2%}**)")
                         
+                        # Collect temporal footprint of primary target anchor to enforce No-Teleportation Law
+                        anchor_frames = set(tracklets[best_id]['boxes'].keys())
                         anchor_body = tracklets[best_id]['body_gallery']
                         anchor_apparel = tracklets[best_id]['apparel_gallery']
                         anchor_faces = [emb for _, emb in tracklets[best_id]['face_gallery']]
                         
-                        dynamic_threshold = max(s_max * 0.82, 0.55)
-                        st.info(f"⚡ Strict Forensic ReID Auto-Threshold established at **{dynamic_threshold:.2%}** (Biometric Veto Active)")
+                        dynamic_threshold = max(s_max * 0.82, 0.65)
+                        st.info(f"⚡ Strict Forensic ReID Auto-Threshold established at **{dynamic_threshold:.2%}** (Biometric & Temporal Veto Active)")
                         
                         for candidate_id, data in tracklets.items():
                             if candidate_id == best_id or len(data['boxes']) < 8:
                                 continue
                             c_score, c_face, c_body, c_apparel = master_scores.get(candidate_id, (0.0, 0.0, 0.0, 0.0))
                             
-                            # Forensic Biometric Veto: Instantly discard non-matching faces even in identical uniform/jersey scenes!
-                            if len(data['face_gallery']) > 0 and c_face < 0.20:
+                            # Rule 1: Forensic Biometric Veto (Different face = Instant Rejection)
+                            if len(data['face_gallery']) > 0 and c_face < 0.22:
+                                continue
+                                
+                            # Rule 2: Simultaneous Existence Veto (No Teleportation Law)
+                            # A person appearing in the same frames as the confirmed target is guaranteed to be a different person!
+                            cand_frames = set(data['boxes'].keys())
+                            if len(anchor_frames.intersection(cand_frames)) > 3:
                                 continue
                                 
                             sim_body = max([cosine_sim(cb, ab) for cb in data['body_gallery'] for ab in anchor_body], default=0.0)
@@ -424,14 +441,18 @@ elif selected == "Live Demo":
                             
                             if c_face >= 0.25 or sim_face >= 0.35:
                                 anchor_sim = 0.60 * max(c_face, sim_face) + 0.20 * sim_body + 0.20 * sim_apparel
+                                best_overall = max(c_score, anchor_sim)
+                                if best_overall >= dynamic_threshold:
+                                    TARGET_IDS.add(candidate_id)
                             else:
+                                # Rule 3: Strict Non-Biometric ReID Floor
+                                # Without confirmed facial biometrics, require stringent visual & garment core correlation (>= 0.75)
                                 anchor_sim = 0.50 * sim_body + 0.50 * sim_apparel
-                                
-                            best_overall = max(c_score, anchor_sim)
-                            if best_overall >= dynamic_threshold:
-                                TARGET_IDS.add(candidate_id)
+                                best_overall = max(c_score, anchor_sim)
+                                if best_overall >= max(dynamic_threshold, 0.75) and sim_body >= 0.65 and sim_apparel >= 0.65:
+                                    TARGET_IDS.add(candidate_id)
                         
-                        st.success(f"🛡️ Multi-Track Reconciliation Complete: Locked onto {len(TARGET_IDS)} validated target trajectories (Background clutter & conflicting IDs pruned).")
+                        st.success(f"🛡️ Multi-Track Reconciliation Complete: Locked onto {len(TARGET_IDS)} validated target trajectories (Background clutter, simultaneous bystanders & conflicting IDs pruned).")
                         
                         # Gather identity proof snapshots from validated targets ONLY
                         all_proofs = []
