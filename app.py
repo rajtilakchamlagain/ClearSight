@@ -337,7 +337,13 @@ if ref_files and video_file:
             w = int(cap_render.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap_render.get(cv2.CAP_PROP_FRAME_HEIGHT))
             
-            out_writer = cv2.VideoWriter(out_filename, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+            # Try H.264 web-compatible encoding first, fallback to mp4v if unavailable
+            try:
+                fourcc = cv2.VideoWriter_fourcc(*'avc1')
+            except Exception:
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                
+            out_writer = cv2.VideoWriter(out_filename, fourcc, fps, (w, h))
             render_idx = 0
             target_frames_found = 0
             
@@ -366,6 +372,15 @@ if ref_files and video_file:
             out_writer.release()
             os.remove(tfile.name)
             
+            # Ensure universal HTML5 browser playback via fast ffmpeg remux if available on Windows
+            import subprocess
+            try:
+                subprocess.run(["ffmpeg", "-y", "-i", out_filename, "-vcodec", "libx264", "-acodec", "aac", "-f", "mp4", "web_compatible_out.mp4"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if os.path.exists("web_compatible_out.mp4") and os.path.getsize("web_compatible_out.mp4") > 0:
+                    os.replace("web_compatible_out.mp4", out_filename)
+            except Exception:
+                pass
+            
             t1 = time.time()
             exec_time = round(t1 - t0, 2)
             progress_bar.progress(1.0)
@@ -388,7 +403,7 @@ if ref_files and video_file:
                 st.markdown("#### 🟢 Verified Video Footage")
                 with open(out_filename, "rb") as vf:
                     v_bytes = vf.read()
-                st.video(v_bytes)
+                st.video(v_bytes, format="video/mp4")
                 st.download_button(
                     label="💾 Download Verified Target Video (MP4)",
                     data=v_bytes,
@@ -409,6 +424,6 @@ if ref_files and video_file:
                 if evidence_shots:
                     for idx, (sim, img_snap) in enumerate(evidence_shots[:3]):
                         img_rgb = cv2.cvtColor(img_snap, cv2.COLOR_BGR2RGB)
-                        st.image(img_rgb, caption=f"Evidence #{idx+1} (Biometric Match: {sim:.2%})", use_column_width=True)
+                        st.image(img_rgb, caption=f"Evidence #{idx+1} (Biometric Match: {sim:.2%})", use_container_width=True)
                 else:
                     st.info("ℹ️ Target was tracked successfully via posture/motion, but no direct close-up frontal snapshots were captured for evidence display.")
