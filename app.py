@@ -1,3 +1,10 @@
+import ssl
+try:
+    ssl._create_default_https_context = ssl._create_unverified_context
+    ssl.create_default_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+
 import os
 import cv2
 import torch
@@ -8,11 +15,59 @@ import tempfile
 import requests
 import insightface
 from insightface.app import FaceAnalysis
+import torchvision.models as models
 from torchvision import transforms
 from PIL import Image
 from streamlit_option_menu import option_menu
 from streamlit_lottie import st_lottie
 from ultralytics import YOLO
+
+# Industrial Whole-Body & Apparel Feature Extraction Helpers
+body_transform = transforms.Compose([
+    transforms.Resize((256, 128)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+def extract_body_embedding(model, crop_bgr):
+    try:
+        img_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(img_rgb)
+        tensor = body_transform(pil_img).unsqueeze(0)
+        with torch.no_grad():
+            feat = model(tensor).numpy().flatten()
+        norm = np.linalg.norm(feat)
+        return feat / norm if norm > 0 else feat
+    except Exception:
+        return np.zeros(1000)
+
+def extract_apparel_signature(crop_bgr):
+    try:
+        h, w, _ = crop_bgr.shape
+        upper = crop_bgr[0:int(h*0.55), :]
+        lower = crop_bgr[int(h*0.55):, :]
+        
+        hsv_upper = cv2.cvtColor(upper, cv2.COLOR_BGR2HSV)
+        hsv_lower = cv2.cvtColor(lower, cv2.COLOR_BGR2HSV)
+        
+        hist_u = cv2.calcHist([hsv_upper], [0, 1], None, [16, 16], [0, 180, 0, 256])
+        hist_l = cv2.calcHist([hsv_lower], [0, 1], None, [16, 16], [0, 180, 0, 256])
+        
+        cv2.normalize(hist_u, hist_u, 0, 1, cv2.NORM_MINMAX)
+        cv2.normalize(hist_l, hist_l, 0, 1, cv2.NORM_MINMAX)
+        
+        sig = np.concatenate([hist_u.flatten(), hist_l.flatten()])
+        norm = np.linalg.norm(sig)
+        return sig / norm if norm > 0 else sig
+    except Exception:
+        return np.zeros(512)
+
+def cosine_sim(a, b):
+    norm_a, norm_b = np.linalg.norm(a), np.linalg.norm(b)
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return float(np.dot(a, b) / (norm_a * norm_b))
+
 
 # ==========================================
 # PAGE CONFIGURATION
@@ -168,11 +223,11 @@ if selected == "About Developer":
 
 elif selected == "Architecture":
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.markdown("<h2>ClearSight V6 (Enterprise Retroactive ReID)</h2>", unsafe_allow_html=True)
-    st.write("**1. Tracklet Generation (YOLOv8 + ByteTrack)**: Builds a database of every person's lifetime in the video.")
-    st.write("**2. Identity Verification (InsightFace ArcFace)**: Runs SOTA Face Recognition on the absolute clearest frame of a tracklet.")
-    st.write("**3. Statistical Anomaly Thresholding**: Uses Z-Score mathematics to auto-calculate the perfect threshold and guarantee 0 false positives.")
-    st.write("**4. Retroactive Backtracking**: Draws the box on the suspect from the exact second they enter the frame, even if their face is completely hidden.")
+    st.markdown("<h2>ClearSight Industrial ReID Engine (Whole-Body + Biometric Veto)</h2>", unsafe_allow_html=True)
+    st.write("**1. Multi-Modal Tracklet Database**: Extracts deep semantic Whole-Body Embeddings (MobileNetV3), Upper/Lower Body Apparel Spatial Signatures (HSV Histograms), and Biometric Facial Vectors (InsightFace ResNet) for every tracked subject.")
+    st.write("**2. Forensic Biometric Veto Rule**: Prevents identity confusion in sports or uniform scenarios by instantly vetoing candidate subjects whose facial captures contradict the target reference.")
+    st.write("**3. Dynamic Auto-Threshold & Silent Backend Pruning**: Automatically calculates optimal ReID confidence floors relative to primary anchors, silently eliminating background clutter and noise.")
+    st.write("**4. Retroactive Trajectory Rendering**: Connects target sightings across occlusions and renders clean, high-precision bounding boxes from frame one without frontend confusion.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 elif selected == "Live Demo":
@@ -200,16 +255,18 @@ elif selected == "Live Demo":
             st.error("⚠️ SYSTEM HALT: Please provide Master Vector images and a Target Video.")
         else:
             st.markdown("<div class='glass-card' style='text-align:center;'>", unsafe_allow_html=True)
-            st.markdown("<h3 style='color:#00f2fe;'>Initializing V6 Enterprise ReID Surveillance Pipeline...</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:#00f2fe;'>Initializing Industrial Whole-Body ReID Surveillance Pipeline...</h3>", unsafe_allow_html=True)
             
             @st.cache_resource
             def load_models():
                 yolo = YOLO('yolov8n.pt') 
                 face_app = FaceAnalysis(name='buffalo_l', providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
                 face_app.prepare(ctx_id=0, det_size=(640, 640))
-                return yolo, face_app
+                body_mod = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
+                body_mod.eval()
+                return yolo, face_app, body_mod
 
-            yolo_model, face_app = load_models()
+            yolo_model, face_app, body_embedder = load_models()
             
             # Phase 2: Master Vector Generation
             embeddings = []
@@ -249,8 +306,8 @@ elif selected == "Live Demo":
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            # Phase 3: Tracklet Generation
-            status_text.text(f"Pass 1: Deep Scanning {total_frames} frames to build Tracklet Database...")
+            # Phase 3: Tracklet Generation & Multi-Modal Feature Extraction
+            status_text.text(f"Pass 1: Deep Scanning {total_frames} frames for Whole-Body, Apparel, and Facial Signatures...")
             
             tracklets = {}
             results = yolo_model.track(source=tfile.name, classes=[0], stream=True, persist=True, verbose=False, tracker="bytetrack.yaml")
@@ -259,7 +316,6 @@ elif selected == "Live Demo":
             for r in results:
                 frame_bgr = r.orig_img
                 
-                # Intelligent Face Sampling: Run deep recognition whenever YOLO actively detects people
                 if r.boxes.id is not None and len(r.boxes.id) > 0:
                     faces_in_frame = face_app.get(frame_bgr)
                     boxes = r.boxes.xyxy.cpu().numpy()
@@ -267,78 +323,107 @@ elif selected == "Live Demo":
                     
                     for box, track_id in zip(boxes, track_ids):
                         if track_id not in tracklets:
-                            tracklets[track_id] = {'boxes': {}, 'embeddings_gallery': []}
+                            tracklets[track_id] = {
+                                'boxes': {}, 
+                                'face_gallery': [], 
+                                'body_gallery': [], 
+                                'apparel_gallery': [],
+                                'proof_images': []
+                            }
                         
                         tracklets[track_id]['boxes'][frame_idx] = box
-                        
                         x1, y1, x2, y2 = box.astype(int)
+                        x1, y1 = max(0, x1), max(0, y1)
+                        x2, y2 = min(width, x2), min(height, y2)
+                        
+                        # Sample Whole-Body & Apparel signatures (capped at 20 diverse samples per trajectory for speed)
+                        if len(tracklets[track_id]['body_gallery']) < 20 and (y2 - y1) > 30 and (x2 - x1) > 15:
+                            person_crop = frame_bgr[y1:y2, x1:x2]
+                            tracklets[track_id]['body_gallery'].append(extract_body_embedding(body_embedder, person_crop))
+                            tracklets[track_id]['apparel_gallery'].append(extract_apparel_signature(person_crop))
                         
                         for face in faces_in_frame:
                             fx1, fy1, fx2, fy2 = face.bbox
                             fcx, fcy = (fx1+fx2)/2, (fy1+fy2)/2
                             
-                            # Ensure face center is inside the person bounding box
                             if x1 <= fcx <= x2 and y1 <= fcy <= y2:
                                 face_area = (fx2-fx1) * (fy2-fy1)
                                 fx1, fy1 = max(0, int(fx1)), max(0, int(fy1))
-                                fx2, fy2 = max(0, int(fx2)), max(0, int(fy2))
+                                fx2, fy2 = min(width, int(fx2)), min(height, int(fy2))
                                 face_img = frame_bgr[fy1:fy2, fx1:fx2].copy()
-                                tracklets[track_id]['embeddings_gallery'].append((face_area, face.embedding, face_img))
+                                tracklets[track_id]['face_gallery'].append((face_area, face.embedding))
+                                if face_img.size > 0:
+                                    tracklets[track_id]['proof_images'].append((face_area, face.embedding, face_img))
 
                 frame_idx += 1
                 if frame_idx % 5 == 0:
                     progress_bar.progress(min(frame_idx / total_frames, 1.0) * 0.4)
                     
-            status_text.text(f"Tracklet Database built! Found {len(tracklets)} unique trajectories. Executing Dynamic ReID...")
+            status_text.text(f"Tracklet Database built ({len(tracklets)} unique trajectories). Executing Forensic Biometric Veto ReID...")
             
-            # Phase 4: ENTERPRISE DYNAMIC RE-IDENTIFICATION & AUTO-THRESHOLDING
+            # Phase 4: INDUSTRIAL WHOLE-BODY REID WITH BIOMETRIC VETO & BACKEND PRUNING
             TARGET_IDS = set()
             best_screenshots = []
-            
-            def cosine_sim(a, b):
-                a = a / np.linalg.norm(a)
-                b = b / np.linalg.norm(b)
-                return np.dot(a, b)
             
             if tracklets:
                 master_scores = {}
                 for track_id, data in tracklets.items():
-                    gallery = data['embeddings_gallery']
-                    if gallery:
-                        sims = [cosine_sim(master_vector, emb) for _, emb, _ in gallery]
-                        master_scores[track_id] = max(sims)
+                    if len(data['boxes']) < 5: # Prune short noise
+                        continue
+                        
+                    f_sim = max([cosine_sim(master_vector, emb) for _, emb in data['face_gallery']], default=0.0)
+                    b_sim = max([cosine_sim(master_vector[:1000], b_emb[:1000]) for b_emb in data['body_gallery']], default=0.0)
+                    a_sim = max([cosine_sim(master_vector[:512], a_emb[:512]) for a_emb in data['apparel_gallery']], default=0.0)
+                    
+                    if len(data['face_gallery']) > 0 and f_sim >= 0.25:
+                        score = 0.70 * f_sim + 0.15 * b_sim + 0.15 * a_sim
+                    else:
+                        score = 0.20 * max(0.0, f_sim) + 0.45 * b_sim + 0.35 * a_sim
+                    master_scores[track_id] = (score, f_sim, b_sim, a_sim)
                 
                 if master_scores:
-                    best_id = max(master_scores, key=master_scores.get)
-                    s_max = master_scores[best_id]
+                    best_id = max(master_scores, key=lambda k: master_scores[k][0])
+                    s_max, f_max, b_max, a_max = master_scores[best_id]
                     
-                    if s_max >= 0.15:
+                    if s_max >= 0.22:
                         TARGET_IDS.add(best_id)
-                        st.success(f"🎯 PRIMARY ANCHOR LOCKED: Tracklet #{best_id} established baseline confidence ({s_max:.2%})")
+                        st.success(f"🎯 TARGET LOCKED: Established Primary Target Anchor #{best_id} with Industrial Hybrid Confidence (**{s_max:.2%}**)")
                         
-                        # Dynamic Auto-Threshold Calculation (Adaptive strictly to this CCTV environment)
-                        dynamic_threshold = max(s_max * 0.75, 0.22)
-                        st.info(f"⚡ Dynamic Auto-Threshold established at **{dynamic_threshold:.2%}** (No manual adjustments required!)")
+                        anchor_body = tracklets[best_id]['body_gallery']
+                        anchor_apparel = tracklets[best_id]['apparel_gallery']
+                        anchor_faces = [emb for _, emb in tracklets[best_id]['face_gallery']]
                         
-                        # Direct Anchor & Master Verification (No Multi-Hop Domino Chaining)
-                        primary_anchor_gallery = tracklets[best_id]['embeddings_gallery']
-                        top_anchor_faces = sorted(primary_anchor_gallery, key=lambda x: x[0], reverse=True)[:5]
+                        dynamic_threshold = max(s_max * 0.82, 0.55)
+                        st.info(f"⚡ Strict Forensic ReID Auto-Threshold established at **{dynamic_threshold:.2%}** (Biometric Veto Active)")
                         
                         for candidate_id, data in tracklets.items():
-                            if candidate_id != best_id and data['embeddings_gallery']:
-                                cand_gallery = data['embeddings_gallery']
-                                sim_to_master = max(cosine_sim(master_vector, emb) for _, emb, _ in cand_gallery)
-                                sim_to_anchor = max(cosine_sim(c_emb, a_emb) for _, c_emb, _ in cand_gallery for _, a_emb, _ in top_anchor_faces)
+                            if candidate_id == best_id or len(data['boxes']) < 8:
+                                continue
+                            c_score, c_face, c_body, c_apparel = master_scores.get(candidate_id, (0.0, 0.0, 0.0, 0.0))
+                            
+                            # Forensic Biometric Veto: Instantly discard non-matching faces even in identical uniform/jersey scenes!
+                            if len(data['face_gallery']) > 0 and c_face < 0.20:
+                                continue
                                 
-                                best_sim = max(sim_to_master, sim_to_anchor)
-                                if best_sim >= dynamic_threshold:
-                                    TARGET_IDS.add(candidate_id)
-                                    st.success(f"🔗 RE-IDENTIFIED & LINKED: Tracklet #{candidate_id} across occlusion gap (Confidence: {best_sim:.2%})")
-                                        
-                        # Collect clearest high-confidence target proof snapshots from all verified galleries
+                            sim_body = max([cosine_sim(cb, ab) for cb in data['body_gallery'] for ab in anchor_body], default=0.0)
+                            sim_apparel = max([cosine_sim(ca, aa) for ca in data['apparel_gallery'] for aa in anchor_apparel], default=0.0)
+                            sim_face = max([cosine_sim(cf, af) for _, cf in data['face_gallery'] for af in anchor_faces], default=0.0)
+                            
+                            if c_face >= 0.25 or sim_face >= 0.35:
+                                anchor_sim = 0.60 * max(c_face, sim_face) + 0.20 * sim_body + 0.20 * sim_apparel
+                            else:
+                                anchor_sim = 0.50 * sim_body + 0.50 * sim_apparel
+                                
+                            best_overall = max(c_score, anchor_sim)
+                            if best_overall >= dynamic_threshold:
+                                TARGET_IDS.add(candidate_id)
+                        
+                        st.success(f"🛡️ Multi-Track Reconciliation Complete: Locked onto {len(TARGET_IDS)} validated target trajectories (Background clutter & conflicting IDs pruned).")
+                        
+                        # Gather identity proof snapshots from validated targets ONLY
                         all_proofs = []
                         for tid in TARGET_IDS:
-                            for area, emb, img in tracklets[tid]['embeddings_gallery']:
+                            for area, emb, img in tracklets[tid]['proof_images']:
                                 sim = cosine_sim(master_vector, emb)
                                 all_proofs.append((sim, area, img))
                         
@@ -351,7 +436,7 @@ elif selected == "Live Demo":
                                     best_screenshots.append((sim, img))
                                     seen_hashes.add(h)
                     else:
-                        st.warning(f"⚠️ Target not found in footage (Highest similarity match was {s_max:.2%}, below safety floor).")
+                        st.warning(f"⚠️ Target not confidently matched in footage (Highest match score {s_max:.2%} fell below safety rejection floor).")
             else:
                 st.warning("⚠️ No human subjects detected in the entire video to analyze.")
 
@@ -375,7 +460,7 @@ elif selected == "Live Demo":
                 # ---------------------------------------------------------
                 sorted_f_idxs = sorted(target_frames.keys())
                 interpolated_frames = target_frames.copy()
-                MAX_GAP = max(int(fps * 3.5), 90) # Industry-standard 3.5s occlusion tolerance
+                MAX_GAP = max(int(fps * 2.5), 60) # Industry-standard bounded ~2.5s occlusion tolerance
                 
                 for i in range(len(sorted_f_idxs) - 1):
                     f1 = sorted_f_idxs[i]
