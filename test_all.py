@@ -90,34 +90,26 @@ def test_video(name, vid_path, ref_path):
             if s_max >= 0.15:
                 TARGET_IDS.add(best_id)
                 
-                # Dynamic Threshold Calculation: scale relative to anchor quality with a flexible floor
-                dynamic_threshold = max(s_max * 0.65, 0.18)
-                print(f"  --> Dynamic Auto-Threshold set to: {dynamic_threshold:.4f} (65% of anchor or 0.18 floor)")
+                # Dynamic Threshold Calculation: scale relative to anchor quality with a strict safety floor
+                dynamic_threshold = max(s_max * 0.75, 0.22)
+                print(f"  --> Dynamic Auto-Threshold set to: {dynamic_threshold:.4f} (75% of anchor or 0.22 floor)")
                 
-                # Iterative Tracklet Clustering across galleries
-                added_new = True
-                while added_new:
-                    added_new = False
-                    for candidate_id, data in tracklets.items():
-                        if candidate_id not in TARGET_IDS and data['embeddings_gallery']:
-                            cand_gallery = data['embeddings_gallery']
-                            
-                            # Max similarity against master reference OR any confirmed target's faces
-                            sim_to_master = max(cosine_sim(master_vector, emb) for _, emb, _ in cand_gallery)
-                            sim_to_cluster = 0.0
-                            for ver_id in TARGET_IDS:
-                                ver_gallery = tracklets[ver_id]['embeddings_gallery']
-                                # Quick comparison against top 5 largest faces of verified tracklet to save time
-                                top_ver = sorted(ver_gallery, key=lambda x: x[0], reverse=True)[:5]
-                                m_sim = max(cosine_sim(c_emb, v_emb) for _, c_emb, _ in cand_gallery for _, v_emb, _ in top_ver)
-                                if m_sim > sim_to_cluster:
-                                    sim_to_cluster = m_sim
-                                    
-                            best_sim = max(sim_to_master, sim_to_cluster)
-                            if best_sim >= dynamic_threshold:
-                                print(f"  --> ReID Linked Track #{candidate_id} into cluster (Sim: {best_sim:.4f} >= {dynamic_threshold:.4f})")
-                                TARGET_IDS.add(candidate_id)
-                                added_new = True
+                # Direct Anchor & Master Verification (No Multi-Hop Domino Chaining)
+                # Avoids error propagation where background subjects infect the target cluster
+                primary_anchor_gallery = tracklets[best_id]['embeddings_gallery']
+                top_anchor_faces = sorted(primary_anchor_gallery, key=lambda x: x[0], reverse=True)[:5]
+                
+                for candidate_id, data in tracklets.items():
+                    if candidate_id != best_id and data['embeddings_gallery']:
+                        cand_gallery = data['embeddings_gallery']
+                        
+                        sim_to_master = max(cosine_sim(master_vector, emb) for _, emb, _ in cand_gallery)
+                        sim_to_anchor = max(cosine_sim(c_emb, a_emb) for _, c_emb, _ in cand_gallery for _, a_emb, _ in top_anchor_faces)
+                        
+                        best_sim = max(sim_to_master, sim_to_anchor)
+                        if best_sim >= dynamic_threshold:
+                            print(f"  --> Verified & Linked Track #{candidate_id} (Sim: {best_sim:.4f} >= {dynamic_threshold:.4f})")
+                            TARGET_IDS.add(candidate_id)
             else:
                 print(f"  --> No confident target found (Best similarity {s_max:.4f} is below 0.15 floor).")
                         
