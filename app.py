@@ -258,20 +258,16 @@ elif selected == "Live Demo":
             frame_idx = 0
             for r in results:
                 frame_bgr = r.orig_img
-                # SPEED OPTIMIZATION: Only run heavy Face Recognition on every 3rd frame.
-                # YOLO continues tracking perfectly, but we just skip face extraction to save CPU time.
-                if frame_idx % 3 == 0:
-                    faces_in_frame = face_app.get(frame_bgr)
-                else:
-                    faces_in_frame = []
                 
-                if r.boxes.id is not None:
+                # Intelligent Face Sampling: Run deep recognition whenever YOLO actively detects people
+                if r.boxes.id is not None and len(r.boxes.id) > 0:
+                    faces_in_frame = face_app.get(frame_bgr)
                     boxes = r.boxes.xyxy.cpu().numpy()
                     track_ids = r.boxes.id.cpu().numpy().astype(int)
                     
                     for box, track_id in zip(boxes, track_ids):
                         if track_id not in tracklets:
-                            tracklets[track_id] = {'boxes': {}, 'best_face_img': None, 'max_face_size': 0, 'best_face_embedding': None}
+                            tracklets[track_id] = {'boxes': {}, 'embeddings_gallery': []}
                         
                         tracklets[track_id]['boxes'][frame_idx] = box
                         
@@ -281,27 +277,21 @@ elif selected == "Live Demo":
                             fx1, fy1, fx2, fy2 = face.bbox
                             fcx, fcy = (fx1+fx2)/2, (fy1+fy2)/2
                             
-                            # Check if face center is inside the upper section of the body box
-                            if x1 <= fcx <= x2 and (y1 - (y2-y1)*0.2) <= fcy <= y2:
+                            # Ensure face center is inside the person bounding box
+                            if x1 <= fcx <= x2 and y1 <= fcy <= y2:
                                 face_area = (fx2-fx1) * (fy2-fy1)
-                                if face_area > tracklets[track_id]['max_face_size']:
-                                    tracklets[track_id]['max_face_size'] = face_area
-                                    
-                                    # Crop just the face for visual proof later
-                                    fx1, fy1 = max(0, int(fx1)), max(0, int(fy1))
-                                    fx2, fy2 = max(0, int(fx2)), max(0, int(fy2))
-                                    
-                                    tracklets[track_id]['best_face_img'] = frame_bgr[fy1:fy2, fx1:fx2].copy()
-                                    tracklets[track_id]['best_face_embedding'] = face.embedding
+                                fx1, fy1 = max(0, int(fx1)), max(0, int(fy1))
+                                fx2, fy2 = max(0, int(fx2)), max(0, int(fy2))
+                                face_img = frame_bgr[fy1:fy2, fx1:fx2].copy()
+                                tracklets[track_id]['embeddings_gallery'].append((face_area, face.embedding, face_img))
 
                 frame_idx += 1
                 if frame_idx % 5 == 0:
                     progress_bar.progress(min(frame_idx / total_frames, 1.0) * 0.4)
                     
-            status_text.text(f"Tracklet Database built! Found {len(tracklets)} unique people. Analyzing statistics...")
+            status_text.text(f"Tracklet Database built! Found {len(tracklets)} unique trajectories. Executing Dynamic ReID...")
             
-            # Phase 4: Z-Score Statistical Anomaly Thresholding
-            # Phase 4: DYNAMIC TRACKLET LINKING
+            # Phase 4: ENTERPRISE DYNAMIC RE-IDENTIFICATION & AUTO-THRESHOLDING
             TARGET_IDS = set()
             best_screenshots = []
             
@@ -311,31 +301,67 @@ elif selected == "Live Demo":
                 return np.dot(a, b)
             
             if tracklets:
-                # 1. Compare all tracklets against the Reference Image
-                scores = {}
+                master_scores = {}
                 for track_id, data in tracklets.items():
-                    if data.get('best_face_embedding') is not None:
-                        scores[track_id] = cosine_sim(master_vector, data['best_face_embedding'])
+                    gallery = data['embeddings_gallery']
+                    if gallery:
+                        sims = [cosine_sim(master_vector, emb) for _, emb, _ in gallery]
+                        master_scores[track_id] = max(sims)
                 
-                if scores:
-                    best_id = max(scores, key=scores.get)
-                    TARGET_IDS.add(best_id)
-                    video_anchor_vector = tracklets[best_id]['best_face_embedding']
+                if master_scores:
+                    best_id = max(master_scores, key=master_scores.get)
+                    s_max = master_scores[best_id]
                     
-                    # 2. Compare remaining tracklets against the Video Anchor (The best match in the video)
-                    # This solves YOLO losing tracking during occlusions.
-                    for track_id, data in tracklets.items():
-                        if track_id != best_id and data.get('best_face_embedding') is not None:
-                            anchor_score = cosine_sim(video_anchor_vector, data['best_face_embedding'])
-                            if anchor_score >= 0.35: # Lowered threshold for robust tracking
-                                TARGET_IDS.add(track_id)
-                                st.success(f"🎯 POSITIVE ID: Secondary Tracklet #{track_id} also verified!")
-                    
-                    for tid in TARGET_IDS:
-                        if len(best_screenshots) < 3 and tracklets[tid]['best_face_img'] is not None:
-                            best_screenshots.append((scores.get(tid, 0.0), tracklets[tid]['best_face_img']))
+                    if s_max >= 0.15:
+                        TARGET_IDS.add(best_id)
+                        st.success(f"🎯 PRIMARY ANCHOR LOCKED: Tracklet #{best_id} established baseline confidence ({s_max:.2%})")
+                        
+                        # Dynamic Auto-Threshold Calculation (Adaptive strictly to this CCTV environment)
+                        dynamic_threshold = max(s_max * 0.65, 0.18)
+                        st.info(f"⚡ Dynamic Auto-Threshold established at **{dynamic_threshold:.2%}** (No manual adjustments required!)")
+                        
+                        # Iterative Tracklet Clustering (Multi-Hop ReID)
+                        added_new = True
+                        while added_new:
+                            added_new = False
+                            for candidate_id, data in tracklets.items():
+                                if candidate_id not in TARGET_IDS and data['embeddings_gallery']:
+                                    cand_gallery = data['embeddings_gallery']
+                                    sim_to_master = max(cosine_sim(master_vector, emb) for _, emb, _ in cand_gallery)
+                                    
+                                    sim_to_cluster = 0.0
+                                    for ver_id in TARGET_IDS:
+                                        ver_gallery = tracklets[ver_id]['embeddings_gallery']
+                                        top_ver = sorted(ver_gallery, key=lambda x: x[0], reverse=True)[:5]
+                                        m_sim = max(cosine_sim(c_emb, v_emb) for _, c_emb, _ in cand_gallery for _, v_emb, _ in top_ver)
+                                        if m_sim > sim_to_cluster:
+                                            sim_to_cluster = m_sim
+                                            
+                                    best_sim = max(sim_to_master, sim_to_cluster)
+                                    if best_sim >= dynamic_threshold:
+                                        TARGET_IDS.add(candidate_id)
+                                        st.success(f"🔗 RE-IDENTIFIED & LINKED: Tracklet #{candidate_id} across occlusion gap (Confidence: {best_sim:.2%})")
+                                        added_new = True
+                                        
+                        # Collect clearest high-confidence target proof snapshots from all verified galleries
+                        all_proofs = []
+                        for tid in TARGET_IDS:
+                            for area, emb, img in tracklets[tid]['embeddings_gallery']:
+                                sim = cosine_sim(master_vector, emb)
+                                all_proofs.append((sim, area, img))
+                        
+                        all_proofs.sort(key=lambda x: (x[0], x[1]), reverse=True)
+                        seen_hashes = set()
+                        for sim, _, img in all_proofs:
+                            if len(best_screenshots) < 4 and img is not None and img.size > 0:
+                                h = hash(img.tobytes()[:200])
+                                if h not in seen_hashes:
+                                    best_screenshots.append((sim, img))
+                                    seen_hashes.add(h)
+                    else:
+                        st.warning(f"⚠️ Target not found in footage (Highest similarity match was {s_max:.2%}, below safety floor).")
             else:
-                st.warning("⚠️ No faces detected in the entire video to analyze.")
+                st.warning("⚠️ No human subjects detected in the entire video to analyze.")
 
             # Phase 5: Retroactive Rendering
             progress_bar.progress(0.5)
@@ -352,12 +378,12 @@ elif selected == "Live Demo":
                         target_frames[f_idx] = box
                         
                 # ---------------------------------------------------------
-                # Phase 4.5: TRACKLET INTERPOLATION (GAP FILLING)
-                # Smooths out gaps when YOLO loses tracking due to occlusion
+                # Phase 4.5: BOUNDED OCCLUSION INTERPOLATION
+                # Smoothly connects target across pillars and temporary obstacles
                 # ---------------------------------------------------------
                 sorted_f_idxs = sorted(target_frames.keys())
                 interpolated_frames = target_frames.copy()
-                MAX_GAP = int(fps * 2) # Max 2 seconds of occlusion gap
+                MAX_GAP = max(int(fps * 3.5), 90) # Industry-standard 3.5s occlusion tolerance
                 
                 for i in range(len(sorted_f_idxs) - 1):
                     f1 = sorted_f_idxs[i]
@@ -367,7 +393,6 @@ elif selected == "Live Demo":
                     if 1 < gap <= MAX_GAP:
                         box1 = np.array(target_frames[f1])
                         box2 = np.array(target_frames[f2])
-                        # Interpolate boxes
                         for j in range(1, gap):
                             f_curr = f1 + j
                             alpha = j / gap
