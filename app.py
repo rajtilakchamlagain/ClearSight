@@ -383,76 +383,73 @@ elif selected == "Live Demo":
                     
             status_text.text(f"Tracklet Database built ({len(tracklets)} unique trajectories). Executing Forensic Biometric Veto ReID...")
             
-            # Phase 4: INDUSTRIAL WHOLE-BODY REID WITH BIOMETRIC VETO & BACKEND PRUNING
+            # Phase 4: INDUSTRY-STANDARD BIOMETRIC-FIRST RE-ID & IN-VIDEO SCENE LEARNING
             TARGET_IDS = set()
             best_screenshots = []
             
             if tracklets:
-                master_scores = {}
-                for track_id, data in tracklets.items():
-                    if len(data['boxes']) < 5: # Prune short noise
+                # 1. Biometric Precedence: Discover Primary Target Anchors via Face Recognition
+                face_scores = {}
+                for tid, data in tracklets.items():
+                    if len(data['boxes']) < 4:
                         continue
-                        
                     f_sim = max([cosine_sim(master_face_vec, emb) for _, emb in data['face_gallery']], default=0.0)
-                    b_sim = max([cosine_sim(master_body_vec, b_emb) for b_emb in data['body_gallery']], default=0.0)
-                    a_sim = max([cosine_sim(master_apparel_sig, a_emb) for a_emb in data['apparel_gallery']], default=0.0)
-                    
-                    if len(data['face_gallery']) > 0 and f_sim >= 0.25:
-                        score = 0.70 * f_sim + 0.15 * b_sim + 0.15 * a_sim
-                    else:
-                        score = 0.20 * max(0.0, f_sim) + 0.45 * b_sim + 0.35 * a_sim
-                    master_scores[track_id] = (score, f_sim, b_sim, a_sim)
+                    face_scores[tid] = f_sim
                 
-                if master_scores:
-                    best_id = max(master_scores, key=lambda k: master_scores[k][0])
-                    s_max, f_max, b_max, a_max = master_scores[best_id]
+                # Identify primary biometric anchor
+                best_id = max(face_scores, key=face_scores.get)
+                f_max = face_scores[best_id]
+                
+                # In difficult night/surveillance lighting, positive matches scale with the peak biometric match (e.g. >= 0.15)
+                bio_threshold = max(f_max * 0.72, 0.15) if f_max >= 0.15 else 0.25
+                
+                for tid, sim in face_scores.items():
+                    if sim >= bio_threshold:
+                        TARGET_IDS.add(tid)
+                        
+                # If no clear facial biometrics appeared in the entire video, fallback to visual feature match against reference photo
+                if not TARGET_IDS:
+                    fallback_id = max(tracklets.keys(), key=lambda k: max([cosine_sim(master_body_vec, b) for b in tracklets[k]['body_gallery']], default=0.0))
+                    if max([cosine_sim(master_body_vec, b) for b in tracklets[fallback_id]['body_gallery']], default=0.0) > 0.45:
+                        TARGET_IDS.add(fallback_id)
+                
+                if TARGET_IDS:
+                    st.success(f"🎯 BIOMETRIC LOCK: Positive target identification on trajectory ID(s) {sorted(list(TARGET_IDS))} (Peak Biometric Confidence: **{f_max:.2%}**)")
                     
-                    if s_max >= 0.22:
-                        TARGET_IDS.add(best_id)
-                        st.success(f"🎯 TARGET LOCKED: Established Primary Target Anchor #{best_id} with Industrial Hybrid Confidence (**{s_max:.2%}**)")
+                    # 2. In-Video Scene Learning: Extract Target's On-Scene Appearance Gallery (overcomes outfit differences between reference photo and live surveillance)
+                    scene_body_gallery = []
+                    scene_apparel_gallery = []
+                    anchor_frames = set()
+                    for tid in TARGET_IDS:
+                        scene_body_gallery.extend(tracklets[tid]['body_gallery'])
+                        scene_apparel_gallery.extend(tracklets[tid]['apparel_gallery'])
+                        anchor_frames.update(tracklets[tid]['boxes'].keys())
                         
-                        # Collect temporal footprint of primary target anchor to enforce No-Teleportation Law
-                        anchor_frames = set(tracklets[best_id]['boxes'].keys())
-                        anchor_body = tracklets[best_id]['body_gallery']
-                        anchor_apparel = tracklets[best_id]['apparel_gallery']
-                        anchor_faces = [emb for _, emb in tracklets[best_id]['face_gallery']]
-                        
-                        dynamic_threshold = max(s_max * 0.82, 0.65)
-                        st.info(f"⚡ Strict Forensic ReID Auto-Threshold established at **{dynamic_threshold:.2%}** (Biometric & Temporal Veto Active)")
-                        
-                        for candidate_id, data in tracklets.items():
-                            if candidate_id == best_id or len(data['boxes']) < 8:
-                                continue
-                            c_score, c_face, c_body, c_apparel = master_scores.get(candidate_id, (0.0, 0.0, 0.0, 0.0))
+                    # 3. Trajectory Association & Simultaneous Existence Veto (No-Teleportation Law)
+                    st.info("⚡ Executing On-Scene Appearance Stitching & Temporal Exclusion Veto...")
+                    for cand_id, data in tracklets.items():
+                        if cand_id in TARGET_IDS or len(data['boxes']) < 6:
+                            continue
                             
-                            # Rule 1: Forensic Biometric Veto (Different face = Instant Rejection)
-                            if len(data['face_gallery']) > 0 and c_face < 0.22:
-                                continue
-                                
-                            # Rule 2: Simultaneous Existence Veto (No Teleportation Law)
-                            # A person appearing in the same frames as the confirmed target is guaranteed to be a different person!
-                            cand_frames = set(data['boxes'].keys())
-                            if len(anchor_frames.intersection(cand_frames)) > 3:
-                                continue
-                                
-                            sim_body = max([cosine_sim(cb, ab) for cb in data['body_gallery'] for ab in anchor_body], default=0.0)
-                            sim_apparel = max([cosine_sim(ca, aa) for ca in data['apparel_gallery'] for aa in anchor_apparel], default=0.0)
-                            sim_face = max([cosine_sim(cf, af) for _, cf in data['face_gallery'] for af in anchor_faces], default=0.0)
+                        # Rule A: Simultaneous Existence Veto (Target cannot exist in two places simultaneously)
+                        cand_frames = set(data['boxes'].keys())
+                        if len(anchor_frames.intersection(cand_frames)) > 2:
+                            continue
                             
-                            if c_face >= 0.25 or sim_face >= 0.35:
-                                anchor_sim = 0.60 * max(c_face, sim_face) + 0.20 * sim_body + 0.20 * sim_apparel
-                                best_overall = max(c_score, anchor_sim)
-                                if best_overall >= dynamic_threshold:
-                                    TARGET_IDS.add(candidate_id)
-                            else:
-                                # Rule 3: Strict Non-Biometric ReID Floor
-                                # Without confirmed facial biometrics, require stringent visual & garment core correlation (>= 0.75)
-                                anchor_sim = 0.50 * sim_body + 0.50 * sim_apparel
-                                best_overall = max(c_score, anchor_sim)
-                                if best_overall >= max(dynamic_threshold, 0.75) and sim_body >= 0.65 and sim_apparel >= 0.65:
-                                    TARGET_IDS.add(candidate_id)
+                        # Rule B: Facial Veto (If face is clearly detected but incompatible, instant rejection)
+                        cand_face = face_scores.get(cand_id, 0.0)
+                        if len(data['face_gallery']) > 0 and cand_face < min(0.14, bio_threshold * 0.85):
+                            continue
+                            
+                        # Rule C: Match un-faced tracklets against target's proven in-video outfit & posture
+                        sim_body = max([cosine_sim(cb, ab) for cb in data['body_gallery'] for ab in scene_body_gallery], default=0.0)
+                        sim_apparel = max([cosine_sim(ca, aa) for ca in data['apparel_gallery'] for aa in scene_apparel_gallery], default=0.0)
                         
-                        st.success(f"🛡️ Multi-Track Reconciliation Complete: Locked onto {len(TARGET_IDS)} validated target trajectories (Background clutter, simultaneous bystanders & conflicting IDs pruned).")
+                        if sim_body >= 0.72 and sim_apparel >= 0.72:
+                            TARGET_IDS.add(cand_id)
+                            anchor_frames.update(cand_frames)
+                            
+                    st.success(f"🛡️ Multi-Track Reconciliation Complete: Locked onto {len(TARGET_IDS)} validated target trajectories. All surrounding crowd bystanders & conflicting IDs suppressed.")
                         
                         # Gather identity proof snapshots from validated targets ONLY
                         all_proofs = []
