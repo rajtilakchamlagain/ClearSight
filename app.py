@@ -334,7 +334,8 @@ if ref_files and video_file:
                 sorted_candidates = sorted(max_face_per_id.items(), key=lambda x: x[1], reverse=True)
                 peak_sim = sorted_candidates[0][1] if sorted_candidates else 0.0
                 
-                auto_floor = max(peak_sim * 0.72, 0.15) if peak_sim >= 0.15 else 0.25
+                # Strict Industrial Precision Thresholding: Require trajectories to reach within 90% of peak scene similarity (or minimum 22%)
+                auto_floor = max(peak_sim * 0.90, 0.22) if peak_sim >= 0.20 else max(peak_sim * 0.85, 0.16)
                 anchor_frames_claimed = set()
                 
                 for tid, sim in sorted_candidates:

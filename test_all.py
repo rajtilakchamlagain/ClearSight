@@ -186,7 +186,7 @@ def test_video(name, vid_path, ref_path):
 
     sorted_candidates = sorted(face_scores.items(), key=lambda x: x[1], reverse=True)
     f_max = sorted_candidates[0][1] if sorted_candidates else 0.0
-    bio_threshold = max(f_max * 0.72, 0.15) if f_max >= 0.15 else 0.25
+    bio_threshold = max(f_max * 0.90, 0.22) if f_max >= 0.20 else max(f_max * 0.85, 0.16)
     
     anchor_frames_claimed = set()
     for tid, sim in sorted_candidates:
