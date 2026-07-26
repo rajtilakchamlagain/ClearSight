@@ -358,39 +358,48 @@ with tab_engine:
                 progress_bar.progress(0.70)
                 
                 TARGET_IDS = set()
+                dominance_scores = {}
                 max_face_per_id = {}
                 
                 for tid, data in tracklets.items():
-                    if len(data['boxes']) < 3:
+                    frame_count = len(data['boxes'])
+                    if frame_count < 3:
                         continue
                     peak_f = max(data['face_sims'], default=0.0)
                     max_face_per_id[tid] = peak_f
                     
+                    # Definitive Dominance Algorithm: combines biometric identity certainty with sustained spatial persistence duration
+                    dominance_scores[tid] = (peak_f ** 2) * (frame_count ** 0.6)
+                    
                 if max_face_per_id:
-                    # Sort candidate trajectories by peak biometric similarity in descending order
-                    sorted_candidates = sorted(max_face_per_id.items(), key=lambda x: x[1], reverse=True)
-                    peak_sim = sorted_candidates[0][1] if sorted_candidates else 0.0
+                    # Isolate the definitive primary subject trajectory utilizing similarity-to-duration ratio
+                    primary_tid = max(dominance_scores.keys(), key=lambda k: dominance_scores[k])
+                    primary_sim = max_face_per_id[primary_tid]
                     
                     if op_mode == "⚙️ Forensic Analyst Override":
-                        effective_floor = manual_thresh
-                        st.info(f"⚙️ Analyst Override Mode Active: Applying operational threshold floor of **{effective_floor:.2%}**.")
+                        effective_floor = max(manual_thresh, primary_sim * 0.90)
+                        st.info(f"⚙️ Analyst Override Active: Locking onto Dominant Subject **#{primary_tid}** (Applying secondary trajectory twin floor of **{effective_floor:.2%}**).")
                     else:
-                        # Rank-1 Precision: Require candidate trajectories to achieve within 96% of the definitive scene match
-                        effective_floor = max(peak_sim * 0.96, 0.15)
+                        # Turnkey Mode: Enforce strict 98% biometric resemblance to the primary subject anchor to reject similarly dressed colleagues/bystanders
+                        effective_floor = max(primary_sim * 0.98, 0.20)
                         
-                    anchor_frames_claimed = set()
-                    
-                    for tid, sim in sorted_candidates:
-                        if sim < effective_floor:
-                            continue
-                        cand_frames = set(tracklets[tid]['boxes'].keys())
+                    if primary_sim >= (manual_thresh if op_mode == "⚙️ Forensic Analyst Override" else 0.15):
+                        TARGET_IDS.add(primary_tid)
+                        anchor_frames_claimed = set(tracklets[primary_tid]['boxes'].keys())
                         
-                        # Rule of Exclusivity: A physical person cannot exist in two separate trajectories simultaneously in the exact same frames
-                        if len(anchor_frames_claimed.intersection(cand_frames)) > 1:
-                            continue
+                        # Check remaining candidate trajectories (e.g. if the target temporarily left camera view and returned)
+                        sorted_others = sorted(max_face_per_id.items(), key=lambda x: x[1], reverse=True)
+                        for tid, sim in sorted_others:
+                            if tid == primary_tid or sim < effective_floor:
+                                continue
+                            cand_frames = set(tracklets[tid]['boxes'].keys())
                             
-                        TARGET_IDS.add(tid)
-                        anchor_frames_claimed.update(cand_frames)
+                            # Rule of Exclusivity: A physical person cannot exist in two separate bounding boxes concurrently in the same frames
+                            if len(anchor_frames_claimed.intersection(cand_frames)) > 1:
+                                continue
+                                
+                            TARGET_IDS.add(tid)
+                            anchor_frames_claimed.update(cand_frames)
                             
                 # Backup mode if low lighting prevented high-confidence facial lock: select the primary subject trajectory
                 if not TARGET_IDS and tracklets:

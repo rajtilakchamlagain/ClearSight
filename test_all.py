@@ -184,20 +184,30 @@ def test_video(name, vid_path, ref_path):
         print("FAILED: No valid trajectories with features.")
         return
 
-    sorted_candidates = sorted(face_scores.items(), key=lambda x: x[1], reverse=True)
-    f_max = sorted_candidates[0][1] if sorted_candidates else 0.0
-    bio_threshold = max(f_max * 0.90, 0.22) if f_max >= 0.20 else max(f_max * 0.85, 0.16)
+    dominance_scores = {}
+    for tid, f_sim in face_scores.items():
+        frame_count = len(tracklets[tid]['boxes'])
+        dominance_scores[tid] = (f_sim ** 2) * (frame_count ** 0.6)
+
+    primary_tid = max(dominance_scores.keys(), key=lambda k: dominance_scores[k])
+    primary_sim = face_scores[primary_tid]
+    bio_threshold = max(primary_sim * 0.98, 0.20)
     
-    anchor_frames_claimed = set()
-    for tid, sim in sorted_candidates:
-        if sim >= bio_threshold:
-            cand_frames = set(tracklets[tid]['boxes'].keys())
-            if len(anchor_frames_claimed.intersection(cand_frames)) > 1:
-                print(f"  --> Rejected Overlapping Concurrent Track #{tid} (Face Sim: {sim:.4f} violated Simultaneous Existence Veto)")
-                continue
-            TARGET_IDS.add(tid)
-            anchor_frames_claimed.update(cand_frames)
-            print(f"  --> Confirmed Biometric Target Track #{tid} (Face Sim: {sim:.4f})")
+    TARGET_IDS.add(primary_tid)
+    anchor_frames_claimed = set(tracklets[primary_tid]['boxes'].keys())
+    print(f"  --> Confirmed #1 Dominant Subject Anchor Track #{primary_tid} (Face Sim: {primary_sim:.4f})")
+    
+    sorted_others = sorted(face_scores.items(), key=lambda x: x[1], reverse=True)
+    for tid, sim in sorted_others:
+        if tid == primary_tid or sim < bio_threshold:
+            continue
+        cand_frames = set(tracklets[tid]['boxes'].keys())
+        if len(anchor_frames_claimed.intersection(cand_frames)) > 1:
+            print(f"  --> Rejected Overlapping Concurrent Track #{tid} (Face Sim: {sim:.4f} violated Simultaneous Existence Veto)")
+            continue
+        TARGET_IDS.add(tid)
+        anchor_frames_claimed.update(cand_frames)
+        print(f"  --> Confirmed Secondary Biometric Twin Track #{tid} (Face Sim: {sim:.4f})")
             
     if not TARGET_IDS:
         fallback_id = max(tracklets.keys(), key=lambda k: max([cosine_sim(master_body_vec, b) for b in tracklets[k]['body_gallery']], default=0.0))
