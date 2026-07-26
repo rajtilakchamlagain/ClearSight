@@ -582,10 +582,22 @@ with tab_engine:
                                 sc_cols = st.columns(min(len(evidence_shots), 3), gap="small")
                                 for idx, (sim, img_snap) in enumerate(evidence_shots[:3]):
                                     with sc_cols[idx]:
-                                        img_rgb = cv2.cvtColor(img_snap, cv2.COLOR_BGR2RGB)
+                                        # Standardize vertical layout length across all ranked videos (V1, V2, V3, V4) using uniform 300x300 forensic canvas
+                                        h_orig, w_orig = img_snap.shape[:2]
+                                        scale = 300 / max(max(1, h_orig), max(1, w_orig))
+                                        new_w, new_h = max(1, int(w_orig * scale)), max(1, int(h_orig * scale))
+                                        resized_snap = cv2.resize(img_snap, (new_w, new_h), interpolation=cv2.INTER_AREA)
+                                        
+                                        # Create dark slate forensic thumbnail container for consistent visual geometry across all subject shapes
+                                        thumb_canvas = np.full((300, 300, 3), 20, dtype=np.uint8)
+                                        y_off = (300 - new_h) // 2
+                                        x_off = (300 - new_w) // 2
+                                        thumb_canvas[y_off:y_off+new_h, x_off:x_off+new_w] = resized_snap
+                                        
+                                        img_rgb = cv2.cvtColor(thumb_canvas, cv2.COLOR_BGR2RGB)
                                         st.image(img_rgb, caption=f"SS #{idx+1} ({sim:.1%})", use_container_width=True)
                                         
-                                        # Individual snapshot photo download button
+                                        # Individual snapshot photo download button preserves high-resolution uncropped original proof
                                         success_enc, buffer = cv2.imencode('.jpg', img_snap)
                                         if success_enc:
                                             st.download_button(
