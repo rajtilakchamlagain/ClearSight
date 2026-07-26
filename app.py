@@ -573,13 +573,7 @@ with tab_engine:
                             if v_file and os.path.exists(v_file):
                                 # Native disk file streaming completely eliminates Base64 DOM RAM bloat and stops browser scroll lag
                                 st.video(v_file, format="video/mp4")
-                                st.download_button(
-                                    label=f"💾 Download Original Output (ID #{tid})",
-                                    data=open(v_file, "rb"),
-                                    file_name=f"ClearSight_Rank{rank_idx}_ID{tid}.mp4",
-                                    mime="video/mp4",
-                                    key=f"dl_orig_{tid}_{rank_idx}"
-                                )
+                                st.caption(f"💾 **Export Ready:** File saved locally as `{v_file}`. To download to another disk, click the **three dots (⋮)** on the video player above and select **Download** (or right-click video and choose **Save Video As**).")
                                 
                             st.write("")
                             if is_sm and tid in target_slowmo_files and os.path.exists(target_slowmo_files[tid]):
@@ -587,13 +581,7 @@ with tab_engine:
                                 st.markdown("##### ⚡ Fractional Slow-Mo Enhancement (<3s Target Appearance)")
                                 st.caption(f"ℹ️ Subject appeared for only **{presence_sec:.1f} seconds**. Below is the exact fractional clip reproduced at **3x slow-motion** for forensic gait analysis:")
                                 st.video(sm_file, format="video/mp4")
-                                st.download_button(
-                                    label=f"💾 Download Slow-Mo Fraction (ID #{tid})",
-                                    data=open(sm_file, "rb"),
-                                    file_name=f"ClearSight_SlowMo_Rank{rank_idx}_ID{tid}.mp4",
-                                    mime="video/mp4",
-                                    key=f"dl_sm_{tid}_{rank_idx}"
-                                )
+                                st.caption(f"💾 **Export Ready:** File saved locally as `{sm_file}`. To download, click the **three dots (⋮)** on the player above and select **Download**.")
                             else:
                                 st.success(f"🟢 **No Need for Slow-Mo:** Subject is captured clearly in surveillance focus for **{presence_sec:.1f} seconds** (exceeds 3.0s threshold).")
                                 
