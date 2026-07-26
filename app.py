@@ -564,72 +564,84 @@ with tab_engine:
                     
                     with c_tab:
                         st.markdown(f"#### {rank_badge} — Peak Certainty: **{match_score:.2%}**")
+                        st.markdown(f"<p style='color:#64748b; font-size:0.9rem;'>Total Target Visibility: <b>{target_presence_stats[tid]} frames (~{presence_sec:.1f}s)</b>. Automated forensic pipeline verified identity stability.</p>", unsafe_allow_html=True)
                         st.write("")
-                        v_col, e_col = st.columns([1.2, 1], gap="large")
                         
-                        with v_col:
-                            st.markdown("##### 🎥 Original Surveillance Output (Normal Speed)")
-                            v_file = target_video_files.get(tid)
-                            if v_file and os.path.exists(v_file):
-                                # Native disk file streaming completely eliminates Base64 DOM RAM bloat and stops browser scroll lag
-                                st.video(v_file, format="video/mp4")
-                                st.caption(f"💾 **Export Ready:** File saved locally as `{v_file}`. To download to another disk, click the **three dots (⋮)** on the video player above and select **Download** (or right-click video and choose **Save Video As**).")
-                                
-                            st.write("")
+                        # Firefox Anti-Lag Protection: Auto-mount video player exclusively on Rank-1. Secondary tabs render on demand to prevent WebSocket memory bloat.
+                        load_video = True
+                        if rank_idx > 1:
+                            load_video = st.checkbox(f"▶️ Activate & View Video Surveillance Player for Track #{tid}", value=False, key=f"view_chk_{tid}_{rank_idx}")
+                            if not load_video:
+                                st.info(f"⚡ **Performance Guard:** Video streams for Match #{rank_idx} are safely archived on disk (`{target_video_files.get(tid)}`). Check the box above to load video into player instantly without lagging browser scrolling.")
+                        
+                        if load_video:
                             if is_sm and tid in target_slowmo_files and os.path.exists(target_slowmo_files[tid]):
-                                sm_file = target_slowmo_files[tid]
-                                st.markdown("##### ⚡ Fractional Slow-Mo Enhancement (<3s Target Appearance)")
-                                st.caption(f"ℹ️ Subject appeared for only **{presence_sec:.1f} seconds**. Below is the exact fractional clip reproduced at **3x slow-motion** for forensic gait analysis:")
-                                st.video(sm_file, format="video/mp4")
-                                st.caption(f"💾 **Export Ready:** File saved locally as `{sm_file}`. To download, click the **three dots (⋮)** on the player above and select **Download**.")
+                                # Balanced Dual-Player Presentation: When Slow-Mo is required, Normal and Slow-Mo stream in symmetric side-by-side columns
+                                vid_c1, vid_c2 = st.columns(2, gap="medium")
+                                with vid_c1:
+                                    st.markdown("##### 🎥 Original Output (Normal Speed)")
+                                    v_file = target_video_files.get(tid)
+                                    if v_file and os.path.exists(v_file):
+                                        st.video(v_file, format="video/mp4")
+                                        st.caption(f"💾 File: `{v_file}` | Download: click `⋮` corner menu.")
+                                with vid_c2:
+                                    sm_file = target_slowmo_files[tid]
+                                    st.markdown("##### ⚡ 3x Slow-Mo (<3s Appearance)")
+                                    st.video(sm_file, format="video/mp4")
+                                    st.caption(f"💾 File: `{sm_file}` | Download: click `⋮` corner menu.")
                             else:
+                                # Clean Single-Player Presentation
+                                st.markdown("##### 🎥 Original Surveillance Output (Normal Speed)")
+                                v_file = target_video_files.get(tid)
+                                if v_file and os.path.exists(v_file):
+                                    st.video(v_file, format="video/mp4")
+                                    st.caption(f"💾 **Export Ready:** Saved locally as `{v_file}`. To download to another disk, click the **three dots (⋮)** on the bottom right of the player (or right-click video and choose Save Video As).")
                                 st.success(f"🟢 **No Need for Slow-Mo:** Subject is captured clearly in surveillance focus for **{presence_sec:.1f} seconds** (exceeds 3.0s threshold).")
                                 
-                        with e_col:
-                            st.markdown("##### 📸 Top-3 Biometric Evidence Snapshots (SS)")
-                            st.markdown(f"<p style='color:#64748b; font-size:0.85rem;'>Total Target Visibility: <b>{target_presence_stats[tid]} frames (~{presence_sec:.1f}s)</b>. Click any photo to zoom in full screen.</p>", unsafe_allow_html=True)
-                            
-                            evidence_shots = []
-                            for sim, img in tracklets[tid]['proofs']:
-                                evidence_shots.append((sim, img))
-                            evidence_shots.sort(key=lambda x: x[0], reverse=True)
-                            
-                            if evidence_shots:
-                                # Render snapshots side-by-side in compact micro-columns to harmonize vertical layout length with video
-                                sc_cols = st.columns(min(len(evidence_shots), 3), gap="small")
+                        st.write("")
+                        st.markdown("##### 📸 Verified Biometric Evidence Gallery (Standardized 16:9 Geometry)")
+                        
+                        evidence_shots = []
+                        for sim, img in tracklets[tid]['proofs']:
+                            evidence_shots.append((sim, img))
+                        evidence_shots.sort(key=lambda x: x[0], reverse=True)
+                        
+                        if evidence_shots:
+                            with st.container(border=True):
+                                # Uniform 3-Column Cinema Showcase: Eliminates size irregularity completely
+                                sc_cols = st.columns(min(len(evidence_shots), 3), gap="medium")
                                 for idx, (sim, img_snap) in enumerate(evidence_shots[:3]):
                                     with sc_cols[idx]:
-                                        # Standardize vertical layout length across all ranked videos (V1, V2, V3, V4) using uniform 300x300 forensic canvas
+                                        # Standardize every SS photo onto a pristine 400x225 widescreen cinema container (16:9 ratio)
                                         h_orig, w_orig = img_snap.shape[:2]
-                                        scale = 300 / max(max(1, h_orig), max(1, w_orig))
+                                        scale = min(400.0 / max(1, w_orig), 225.0 / max(1, h_orig))
                                         new_w, new_h = max(1, int(w_orig * scale)), max(1, int(h_orig * scale))
                                         resized_snap = cv2.resize(img_snap, (new_w, new_h), interpolation=cv2.INTER_AREA)
                                         
-                                        # Create dark slate forensic thumbnail container for consistent visual geometry across all subject shapes
-                                        thumb_canvas = np.full((300, 300, 3), 20, dtype=np.uint8)
-                                        y_off = (300 - new_h) // 2
-                                        x_off = (300 - new_w) // 2
+                                        # Deep slate professional canvas matching dark theme aesthetics (#0f172a / RGB 15, 23, 42)
+                                        thumb_canvas = np.full((225, 400, 3), 25, dtype=np.uint8)
+                                        y_off = (225 - new_h) // 2
+                                        x_off = (400 - new_w) // 2
                                         thumb_canvas[y_off:y_off+new_h, x_off:x_off+new_w] = resized_snap
                                         
                                         # Front-End Memory Compression: Passing light JPEG buffer drops DOM image RAM footprint by 95%
-                                        succ_thumb, thumb_buf = cv2.imencode('.jpg', thumb_canvas, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+                                        succ_thumb, thumb_buf = cv2.imencode('.jpg', thumb_canvas, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
                                         if succ_thumb:
-                                            st.image(thumb_buf.tobytes(), caption=f"SS #{idx+1} ({sim:.1%})", use_container_width=True)
+                                            st.image(thumb_buf.tobytes(), caption=f"SS #{idx+1} — Match: {sim:.1%}", use_container_width=True)
                                         else:
-                                            st.image(cv2.cvtColor(thumb_canvas, cv2.COLOR_BGR2RGB), caption=f"SS #{idx+1} ({sim:.1%})", use_container_width=True)
+                                            st.image(cv2.cvtColor(thumb_canvas, cv2.COLOR_BGR2RGB), caption=f"SS #{idx+1} — Match: {sim:.1%}", use_container_width=True)
                                         
-                                        # Individual snapshot photo download button preserves high-resolution uncropped original proof
                                         success_enc, buffer = cv2.imencode('.jpg', img_snap)
                                         if success_enc:
                                             st.download_button(
-                                                label=f"💾 SS #{idx+1}",
+                                                label=f"💾 Download SS #{idx+1}",
                                                 data=buffer.tobytes(),
                                                 file_name=f"Evidence_Rank{rank_idx}_ID{tid}_SS{idx+1}.jpg",
                                                 mime="image/jpeg",
                                                 key=f"dl_ss_{tid}_{rank_idx}_{idx}"
                                             )
-                            else:
-                                st.info("ℹ️ Target tracked successfully via motion/posture persistence; direct frontal portrait crops unavailable.")
+                        else:
+                            st.info("ℹ️ Target tracked successfully via motion/posture persistence; direct frontal portrait crops unavailable.")
                         st.divider()
 
 # =====================================================================
