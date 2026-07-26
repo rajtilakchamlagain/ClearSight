@@ -602,6 +602,7 @@ with tab_engine:
                                                 file_name=f"Evidence_Rank{rank_idx}_ID{tid}_SS{idx+1}.jpg",
                                                 mime="image/jpeg",
                                                 key=f"dl_ss_{tid}_{rank_idx}_{idx}"
+                                            )
                             else:
                                 st.info("ℹ️ Target tracked successfully via motion/posture persistence; direct frontal portrait crops unavailable.")
                         st.divider()
