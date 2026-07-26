@@ -372,75 +372,30 @@ with tab_engine:
                     dominance_scores[tid] = (peak_f ** 2) * (frame_count ** 0.6)
                     
                 if max_face_per_id:
-                    # Isolate the definitive primary subject trajectory utilizing similarity-to-duration ratio
-                    primary_tid = max(dominance_scores.keys(), key=lambda k: dominance_scores[k])
-                    primary_sim = max_face_per_id[primary_tid]
+                    # Isolate definitive primary subject anchor using pure peak biometric similarity
+                    sorted_candidates = sorted(max_face_per_id.items(), key=lambda x: x[1], reverse=True)
+                    primary_tid, primary_sim = sorted_candidates[0]
                     
                     if op_mode == "⚙️ Forensic Analyst Override":
-                        st.info(f"⚙️ Analyst Override Active: Definitive Primary Anchor locked on **Subject Track #{primary_tid}** (Peak Biometric Match: **{primary_sim:.2%}**).")
+                        effective_floor = manual_thresh
+                        st.info(f"⚙️ Analyst Override Active: Primary Subject Anchor Track **#{primary_tid}** achieved Peak Match of **{primary_sim:.2%}**. Filtering trajectories above floor **{effective_floor:.2%}**.")
+                    else:
+                        # Rank-1 Precision: Require any secondary trajectory fragment to match within 92% of the primary identity match
+                        effective_floor = max(primary_sim * 0.92, 0.18)
                         
-                    if primary_sim >= (manual_thresh if op_mode == "⚙️ Forensic Analyst Override" else 0.15):
-                        TARGET_IDS.add(primary_tid)
-                        
-                        # Forward Trajectory Occlusion Handoff: Bridge broken tracks when crowd members pass in front of the subject
-                        curr_fwd = primary_tid
-                        while True:
-                            f_list = sorted(list(tracklets[curr_fwd]['boxes'].keys()))
-                            if not f_list:
-                                break
-                            end_f = f_list[-1]
-                            ex1, ey1, ex2, ey2 = tracklets[curr_fwd]['boxes'][end_f]
-                            ecx, ecy = (ex1 + ex2) / 2.0, (ey1 + ey2) / 2.0
-                            bw, bh = ex2 - ex1, ey2 - ey1
+                    if primary_sim >= effective_floor:
+                        anchor_frames_claimed = set()
+                        for tid, sim in sorted_candidates:
+                            if sim < effective_floor:
+                                continue
+                            cand_frames = set(tracklets[tid]['boxes'].keys())
                             
-                            best_next, best_dist = None, float('inf')
-                            for c_id, data in tracklets.items():
-                                if c_id in TARGET_IDS or len(data['boxes']) < 3:
-                                    continue
-                                c_list = sorted(list(data['boxes'].keys()))
-                                start_c = c_list[0]
-                                if 1 <= start_c - end_f <= 45:
-                                    cx1, cy1, cx2, cy2 = data['boxes'][start_c]
-                                    ccx, ccy = (cx1 + cx2) / 2.0, (cy1 + cy2) / 2.0
-                                    dist = np.hypot(ccx - ecx, ccy - ecy)
-                                    if dist < bw * 1.5 and dist < best_dist:
-                                        best_dist = dist
-                                        best_next = c_id
-                            if best_next is not None:
-                                TARGET_IDS.add(best_next)
-                                curr_fwd = best_next
-                            else:
-                                break
+                            # Rule of Exclusivity: A physical subject cannot exist in two separate bounding boxes simultaneously
+                            if len(anchor_frames_claimed.intersection(cand_frames)) > 1:
+                                continue
                                 
-                        # Backward Trajectory Occlusion Handoff: Reconstruct subject presence prior to brief interruptions
-                        curr_bwd = primary_tid
-                        while True:
-                            b_list = sorted(list(tracklets[curr_bwd]['boxes'].keys()))
-                            if not b_list:
-                                break
-                            start_b = b_list[0]
-                            bx1, by1, bx2, by2 = tracklets[curr_bwd]['boxes'][start_b]
-                            bcx, bcy = (bx1 + bx2) / 2.0, (by1 + by2) / 2.0
-                            bw, bh = bx2 - bx1, by2 - by1
-                            
-                            best_prev, best_p_dist = None, float('inf')
-                            for p_id, data in tracklets.items():
-                                if p_id in TARGET_IDS or len(data['boxes']) < 3:
-                                    continue
-                                p_list = sorted(list(data['boxes'].keys()))
-                                end_p = p_list[-1]
-                                if 1 <= start_b - end_p <= 45:
-                                    px1, py1, px2, py2 = data['boxes'][end_p]
-                                    pcx, pcy = (px1 + px2) / 2.0, (py1 + py2) / 2.0
-                                    dist = np.hypot(pcx - bcx, pcy - bcy)
-                                    if dist < bw * 1.5 and dist < best_p_dist:
-                                        best_p_dist = dist
-                                        best_prev = p_id
-                            if best_prev is not None:
-                                TARGET_IDS.add(best_prev)
-                                curr_bwd = best_prev
-                            else:
-                                break
+                            TARGET_IDS.add(tid)
+                            anchor_frames_claimed.update(cand_frames)
 
                 # Backup mode if low lighting prevented high-confidence facial lock: select the primary subject trajectory
                 if not TARGET_IDS and tracklets:
