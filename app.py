@@ -174,8 +174,8 @@ with st.sidebar:
     st.markdown("#### 🎯 Operational Protocol")
     op_mode = st.radio(
         "Select Target Acquisition Mode:",
-        ["🔒 Rank-1 Precision Lock (Auto)", "⚙️ Forensic Analyst Override"],
-        help="Rank-1 auto-locks strictly onto the highest biometric match to eliminate false positives. Analyst override enables manual sensitivity calibration."
+        ["⚛️ Autonomous Spectral Gap Lock (Auto)", "⚙️ Forensic Analyst Override"],
+        help="Autonomous Spectral Gap calculates maximal similarity derivative cliffs to separate target identities from crowd noise without manual guesswork."
     )
     
     manual_thresh = 0.20
@@ -187,7 +187,7 @@ with st.sidebar:
         ) / 100.0
         st.info("💡 **Tip:** Need help selecting the exact percentage? Switch to the **📖 Law Enforcement Field Manual** tab above for photo examples & operational rules!")
     else:
-        st.caption("✨ **Turnkey Precision Guarantee:** Automatically isolates the single definitive subject trajectory. Ensures zero false arrests in crowded scenes or identical clothing.")
+        st.caption("⚛️ **Autonomous Spectral Gap Calibration:** Employs maximal derivative thresholding to unsupervisedly detect the largest mathematical similarity drop-off (the 'Spectral Cliff') separating valid target trajectories from innocent background bystanders. Zero manual guesswork required.")
     
     st.divider()
     st.caption("Developed by **Rajtilak Chamlagain**")
@@ -382,8 +382,29 @@ with tab_engine:
                         effective_floor = manual_thresh
                         st.info(f"⚙️ Analyst Override Active: Primary Subject Anchor Track **#{primary_tid}** achieved Peak Match of **{primary_sim:.2%}**. Generating separate surveillance videos for all candidates matching above **{effective_floor:.2%}**.")
                     else:
-                        # Rank-1 Precision Auto-Mode: Include all high-probability candidate tracks within close range of peak match
-                        effective_floor = max(primary_sim * 0.90, 0.18)
+                        # Autonomous Spectral Gap Detection: unsupervised maximal derivative thresholding ("Cliff Detection")
+                        # Analyzes similarity score distribution across all trajectories to discover the largest natural gap between targets and crowd noise
+                        sim_scores = [sim for _, sim in sorted_candidates if sim > 0.05]
+                        if len(sim_scores) >= 2:
+                            # Calculate numerical deltas (derivative steps) between consecutive descending candidate ranks
+                            deltas = [sim_scores[i] - sim_scores[i+1] for i in range(len(sim_scores)-1)]
+                            max_cliff_idx = int(np.argmax(deltas))
+                            max_cliff_drop = deltas[max_cliff_idx]
+                            
+                            # If a significant percentage drop-off cliff (>= 4% similarity gap) separates ranks, place autonomous gate inside the chasm
+                            if max_cliff_drop >= 0.04 and sim_scores[0] >= 0.16:
+                                # Place dynamic threshold precisely inside the discovered spectral gap chasm
+                                effective_floor = max(sim_scores[max_cliff_idx + 1] + (max_cliff_drop * 0.40), 0.16)
+                                cliff_top_tid = sorted_candidates[max_cliff_idx][0]
+                                cliff_btm_tid = sorted_candidates[max_cliff_idx+1][0]
+                                st.success(f"⚛️ **Autonomous Spectral Gap Calibration:** Detected a **{max_cliff_drop:.2%} biometric drop-off cliff** separating target trajectories (Track #{cliff_top_tid} @ {sim_scores[max_cliff_idx]:.2%}) from general crowd noise (Track #{cliff_btm_tid} @ {sim_scores[max_cliff_idx+1]:.2%}). Dynamically set autonomous threshold gate to **{effective_floor:.2%}**!")
+                            else:
+                                # Smooth distribution fallback: lock onto high-probability cluster around primary subject anchor
+                                effective_floor = max(primary_sim * 0.85, 0.18)
+                                st.info(f"⚛️ **Autonomous Spectral Gap Calibration:** Primary Subject Track **#{primary_tid}** leads at **{primary_sim:.2%}**. Established dynamic high-confidence envelope at **{effective_floor:.2%}**.")
+                        else:
+                            effective_floor = max(primary_sim * 0.85, 0.18)
+                            st.info(f"⚛️ **Autonomous Spectral Gap Calibration:** Established single-subject dynamic gate at **{effective_floor:.2%}**.")
                         
                     for tid, sim in sorted_candidates:
                         if sim >= effective_floor:
