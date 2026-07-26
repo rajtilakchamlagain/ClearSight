@@ -404,12 +404,13 @@ with tab_engine:
                         TARGET_IDS.add(best_fallback)
                 
                 # --- PHASE 4: MULTI-TARGET FORENSIC VIDEO PRODUCTION & SLOW-MO ENHANCEMENT ---
-                status_text.markdown("🔷 **Phase 4:** Producing isolated ranked forensic surveillance videos & slow-mo analyses...")
+                status_text.markdown("🔷 **Phase 4:** Producing isolated ranked forensic surveillance videos and slow-mo analyses...")
                 progress_bar.progress(0.80)
                 
                 # Sort confirmed targets by biometric match score to rank candidates from highest certainty down
                 ranked_targets = sorted(list(TARGET_IDS), key=lambda tid: max_face_per_id.get(tid, 0.0), reverse=True)[:4]
                 target_video_files = {}
+                target_slowmo_files = {}
                 target_presence_stats = {}
                 
                 import subprocess
@@ -417,10 +418,9 @@ with tab_engine:
                     presence_frames = len(tracklets[tid]['boxes'])
                     target_presence_stats[tid] = presence_frames
                     
-                    # Automated Forensic Slow-Mo: If subject appears in footage for under 3 seconds, interpolate 3x slow-motion
                     is_slow_mo = (presence_frames < int(fps * 3.0)) and (presence_frames > 0)
-                    render_fps = max(1.0, float(fps) / 3.0) if is_slow_mo else float(fps)
                     
+                    # 1. Render Original Full-Speed Surveillance Output Video
                     raw_fname = f"raw_rank{rank_idx}_id{tid}.mp4"
                     out_fname = f"ClearSight_Rank{rank_idx}_ID{tid}.mp4"
                     
@@ -433,7 +433,7 @@ with tab_engine:
                     except Exception:
                         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                         
-                    out_writer = cv2.VideoWriter(raw_fname, fourcc, render_fps, (w, h))
+                    out_writer = cv2.VideoWriter(raw_fname, fourcc, float(fps), (w, h))
                     render_idx = 0
                     
                     while cap_render.isOpened():
@@ -444,8 +444,6 @@ with tab_engine:
                         
                         if render_idx in tracklets[tid]['boxes']:
                             bx1, by1, bx2, by2 = tracklets[tid]['boxes'][render_idx]
-                            
-                            # Distinctive vibrant tracking box exclusively for this ranked subject
                             box_color = (87, 248, 4) if rank_idx == 1 else ((0, 215, 255) if rank_idx == 2 else (255, 144, 30))
                             cv2.rectangle(frame, (bx1, by1), (bx2, by2), box_color, 3)
                             
@@ -454,17 +452,12 @@ with tab_engine:
                             (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
                             cv2.rectangle(frame, (bx1, max(0, by1 - 30)), (bx1 + tw + 14, by1), box_color, -1)
                             cv2.putText(frame, label, (bx1 + 7, max(15, by1 - 8)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
-                            
-                            if is_slow_mo:
-                                sm_text = "⚠️ FORENSIC SLOW-MOTION ENHANCEMENT (3X SPEED)"
-                                cv2.putText(frame, sm_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
                                 
                         out_writer.write(frame)
                         
                     cap_render.release()
                     out_writer.release()
                     
-                    # Universal web browser compatibility via ffmpeg remux
                     try:
                         subprocess.run(["ffmpeg", "-y", "-i", raw_fname, "-vcodec", "libx264", "-acodec", "aac", "-f", "mp4", out_fname], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                         if os.path.exists(out_fname) and os.path.getsize(out_fname) > 0:
@@ -473,8 +466,52 @@ with tab_engine:
                             os.replace(raw_fname, out_fname)
                     except Exception:
                         if os.path.exists(raw_fname): os.replace(raw_fname, out_fname)
-                        
                     target_video_files[tid] = out_fname
+                    
+                    # 2. Render Fractional Slow-Motion Video if subject presence is under 3 seconds
+                    if is_slow_mo:
+                        f_keys = sorted(list(tracklets[tid]['boxes'].keys()))
+                        min_f, max_f = f_keys[0], f_keys[-1]
+                        
+                        raw_sm = f"raw_sm_rank{rank_idx}_id{tid}.mp4"
+                        out_sm = f"ClearSight_SlowMo_Rank{rank_idx}_ID{tid}.mp4"
+                        sm_fps = max(1.0, float(fps) / 3.0)
+                        
+                        cap_sm = cv2.VideoCapture(tfile.name)
+                        sm_writer = cv2.VideoWriter(raw_sm, fourcc, sm_fps, (w, h))
+                        sm_idx = 0
+                        
+                        while cap_sm.isOpened():
+                            ret_sm, frame_sm = cap_sm.read()
+                            if not ret_sm:
+                                break
+                            sm_idx += 1
+                            
+                            # Only capture the specific fraction of the clip where subject is active (with 5-frame buffer)
+                            if max(1, min_f - 5) <= sm_idx <= (max_f + 5):
+                                if sm_idx in tracklets[tid]['boxes']:
+                                    bx1, by1, bx2, by2 = tracklets[tid]['boxes'][sm_idx]
+                                    box_color = (87, 248, 4) if rank_idx == 1 else ((0, 215, 255) if rank_idx == 2 else (255, 144, 30))
+                                    cv2.rectangle(frame_sm, (bx1, by1), (bx2, by2), box_color, 3)
+                                    label_sm = f"SLOW-MO FRACTION | RANK #{rank_idx} | ID #{tid}"
+                                    (tw, th), _ = cv2.getTextSize(label_sm, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+                                    cv2.rectangle(frame_sm, (bx1, max(0, by1 - 30)), (bx1 + tw + 14, by1), box_color, -1)
+                                    cv2.putText(frame_sm, label_sm, (bx1 + 7, max(15, by1 - 8)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+                                    cv2.putText(frame_sm, "⚠️ FORENSIC SLOW-MOTION SEGMENT (<3s APPEARANCE)", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+                                sm_writer.write(frame_sm)
+                                
+                        cap_sm.release()
+                        sm_writer.release()
+                        
+                        try:
+                            subprocess.run(["ffmpeg", "-y", "-i", raw_sm, "-vcodec", "libx264", "-acodec", "aac", "-f", "mp4", out_sm], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            if os.path.exists(out_sm) and os.path.getsize(out_sm) > 0:
+                                if os.path.exists(raw_sm): os.remove(raw_sm)
+                            else:
+                                os.replace(raw_sm, out_sm)
+                        except Exception:
+                            if os.path.exists(raw_sm): os.replace(raw_sm, out_sm)
+                        target_slowmo_files[tid] = out_sm
                     
                 if os.path.exists(tfile.name):
                     os.remove(tfile.name)
@@ -487,7 +524,7 @@ with tab_engine:
                 # --- PHASE 5: RESULTS & RANKED FORENSIC EVIDENCE SHOWCASE ---
                 st.write("---")
                 st.markdown("### 🏆 Surveillance Investigation & Ranked Threat Report")
-                st.markdown("<p style='color:#64748b; font-size:0.95rem;'>Isolated candidate videos generated in decreasing match probability. Subjects appearing under 3 seconds automatically receive 3x forensic slow-motion zoom.</p>", unsafe_allow_html=True)
+                st.markdown("<p style='color:#64748b; font-size:0.95rem;'>Isolated candidate videos generated in decreasing match probability. Subjects appearing under 3 seconds automatically trigger a dedicated fractional slow-motion investigative clip below.</p>", unsafe_allow_html=True)
                 
                 m_col1, m_col2, m_col3, m_col4 = st.columns(4)
                 m_col1.metric("Validated Candidate Tracks", f"{len(ranked_targets)} Video(s)")
@@ -503,31 +540,45 @@ with tab_engine:
                     is_sm = (target_presence_stats[tid] < int(fps * 3.0)) and (target_presence_stats[tid] > 0)
                     
                     rank_badge = "🏆 Match #1: Definitive Prime Subject (Highest Probability)" if rank_idx == 1 else f"🥈 Match #{rank_idx}: Secondary Candidate Profile (Probable Accomplier / Variant)"
-                    bg_color = "#f0fdf4" if rank_idx == 1 else "#f8fafc"
                     
                     with st.expander(f"{rank_badge} — Track #{tid} (Biometric Certainty: {match_score:.2%})", expanded=(rank_idx <= 2)):
-                        v_col, e_col = st.columns([1.3, 1], gap="large")
+                        v_col, e_col = st.columns([1.2, 1], gap="large")
                         
                         with v_col:
-                            st.markdown(f"#### 🎥 Isolated Target Surveillance Video {'(⚠️ 3x Slow-Mo Enhanced)' if is_sm else ''}")
+                            st.markdown("#### 🎥 Original Surveillance Output (Normal Speed)")
                             v_file = target_video_files.get(tid)
                             if v_file and os.path.exists(v_file):
                                 with open(v_file, "rb") as vf:
                                     v_bytes = vf.read()
                                 st.video(v_bytes, format="video/mp4")
                                 st.download_button(
-                                    label=f"💾 Download Rank-{rank_idx} Target Video (ID #{tid})",
+                                    label=f"💾 Download Original Output (ID #{tid})",
                                     data=v_bytes,
                                     file_name=f"ClearSight_Rank{rank_idx}_ID{tid}.mp4",
                                     mime="video/mp4",
-                                    key=f"dl_btn_{tid}_{rank_idx}"
+                                    key=f"dl_orig_{tid}_{rank_idx}"
                                 )
-                            if is_sm:
-                                st.caption("⚡ **Forensic Slow-Motion Intervention:** Because this candidate was visible for under 3 seconds in live playback, the rendering engine automatically generated a 3x slow-motion analysis clip to permit accurate judicial and investigative evaluation.")
+                                
+                            st.write("")
+                            if is_sm and tid in target_slowmo_files and os.path.exists(target_slowmo_files[tid]):
+                                st.markdown("#### ⚡ Fractional Slow-Mo Enhancement (<3s Target Appearance)")
+                                st.caption(f"ℹ️ Subject appeared for only **{presence_sec:.1f} seconds**. Below is the exact fractional clip reproduced at **3x slow-motion** for forensic gait analysis:")
+                                with open(target_slowmo_files[tid], "rb") as smf:
+                                    sm_bytes = smf.read()
+                                st.video(sm_bytes, format="video/mp4")
+                                st.download_button(
+                                    label=f"💾 Download Slow-Mo Fraction (ID #{tid})",
+                                    data=sm_bytes,
+                                    file_name=f"ClearSight_SlowMo_Rank{rank_idx}_ID{tid}.mp4",
+                                    mime="video/mp4",
+                                    key=f"dl_sm_{tid}_{rank_idx}"
+                                )
+                            else:
+                                st.success(f"🟢 **No Need for Slow-Mo:** Subject is captured clearly in surveillance focus for **{presence_sec:.1f} seconds** (exceeds 3.0s threshold).")
                                 
                         with e_col:
                             st.markdown("#### 📸 Top-3 Biometric Evidence Snapshots (SS)")
-                            st.markdown(f"<p style='color:#64748b; font-size:0.85rem;'>Total Target Visibility: <b>{target_presence_stats[tid]} frames (~{presence_sec:.1f}s)</b></p>", unsafe_allow_html=True)
+                            st.markdown(f"<p style='color:#64748b; font-size:0.85rem;'>Total Target Visibility: <b>{target_presence_stats[tid]} frames (~{presence_sec:.1f}s)</b>. Click any photo to zoom in full screen.</p>", unsafe_allow_html=True)
                             
                             evidence_shots = []
                             for sim, img in tracklets[tid]['proofs']:
@@ -535,9 +586,22 @@ with tab_engine:
                             evidence_shots.sort(key=lambda x: x[0], reverse=True)
                             
                             if evidence_shots:
+                                # Render snapshots side-by-side in compact micro-columns to harmonize vertical layout length with video
+                                sc_cols = st.columns(min(len(evidence_shots), 3), gap="small")
                                 for idx, (sim, img_snap) in enumerate(evidence_shots[:3]):
-                                    img_rgb = cv2.cvtColor(img_snap, cv2.COLOR_BGR2RGB)
-                                    st.image(img_rgb, caption=f"Rank #{rank_idx} Evidence #{idx+1} | Match: {sim:.2%}", use_container_width=True)
+                                    with sc_cols[idx]:
+                                        img_rgb = cv2.cvtColor(img_snap, cv2.COLOR_BGR2RGB)
+                                        st.image(img_rgb, caption=f"SS #{idx+1} ({sim:.1%})", use_container_width=True)
+                                        
+                                        # Individual snapshot photo download button
+                                        success_enc, buffer = cv2.imencode('.jpg', img_snap)
+                                        if success_enc:
+                                            st.download_button(
+                                                label=f"💾 SS #{idx+1}",
+                                                data=buffer.tobytes(),
+                                                file_name=f"Evidence_Rank{rank_idx}_ID{tid}_SS{idx+1}.jpg",
+                                                mime="image/jpeg",
+                                                key=f"dl_ss_{tid}_{rank_idx}_{idx}"
                             else:
                                 st.info("ℹ️ Target tracked successfully via motion/posture persistence; direct frontal portrait crops unavailable.")
                         st.divider()
