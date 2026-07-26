@@ -182,7 +182,7 @@ with st.sidebar:
     if op_mode == "⚙️ Forensic Analyst Override":
         manual_thresh = st.slider(
             "Biometric Match Floor (%)", 
-            min_value=10, max_value=60, value=20, step=2,
+            min_value=10, max_value=60, value=19, step=1,
             help="Lower sensitivity for sunglasses/masks; raise for unobstructed sunlight surveillance."
         ) / 100.0
         st.info("💡 **Tip:** Need help selecting the exact percentage? Switch to the **📖 Law Enforcement Field Manual** tab above for photo examples & operational rules!")
