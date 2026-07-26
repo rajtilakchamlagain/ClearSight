@@ -403,105 +403,144 @@ with tab_engine:
                     if best_fallback is not None and len(tracklets[best_fallback]['boxes']) >= 30:
                         TARGET_IDS.add(best_fallback)
                 
-                # --- PHASE 4: HIGH-PRECISION VIDEO RENDERING ---
-                status_text.markdown("🔷 **Phase 4:** Rendering high-definition surveillance output video...")
+                # --- PHASE 4: MULTI-TARGET FORENSIC VIDEO PRODUCTION & SLOW-MO ENHANCEMENT ---
+                status_text.markdown("🔷 **Phase 4:** Producing isolated ranked forensic surveillance videos & slow-mo analyses...")
                 progress_bar.progress(0.80)
                 
-                out_filename = "ClearSight_Luxe_Output.mp4"
-                cap_render = cv2.VideoCapture(tfile.name)
-                w = int(cap_render.get(cv2.CAP_PROP_FRAME_WIDTH))
-                h = int(cap_render.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                # Sort confirmed targets by biometric match score to rank candidates from highest certainty down
+                ranked_targets = sorted(list(TARGET_IDS), key=lambda tid: max_face_per_id.get(tid, 0.0), reverse=True)[:4]
+                target_video_files = {}
+                target_presence_stats = {}
                 
-                # Try H.264 web-compatible encoding first, fallback to mp4v if unavailable
-                try:
-                    fourcc = cv2.VideoWriter_fourcc(*'avc1')
-                except Exception:
-                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                import subprocess
+                for rank_idx, tid in enumerate(ranked_targets, start=1):
+                    presence_frames = len(tracklets[tid]['boxes'])
+                    target_presence_stats[tid] = presence_frames
                     
-                out_writer = cv2.VideoWriter(out_filename, fourcc, fps, (w, h))
-                render_idx = 0
-                target_frames_found = 0
-                
-                while cap_render.isOpened():
-                    ret, frame = cap_render.read()
-                    if not ret:
-                        break
-                    render_idx += 1
+                    # Automated Forensic Slow-Mo: If subject appears in footage for under 3 seconds, interpolate 3x slow-motion
+                    is_slow_mo = (presence_frames < int(fps * 3.0)) and (presence_frames > 0)
+                    render_fps = max(1.0, float(fps) / 3.0) if is_slow_mo else float(fps)
                     
-                    for tid in TARGET_IDS:
+                    raw_fname = f"raw_rank{rank_idx}_id{tid}.mp4"
+                    out_fname = f"ClearSight_Rank{rank_idx}_ID{tid}.mp4"
+                    
+                    cap_render = cv2.VideoCapture(tfile.name)
+                    w = int(cap_render.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    h = int(cap_render.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    
+                    try:
+                        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+                    except Exception:
+                        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                        
+                    out_writer = cv2.VideoWriter(raw_fname, fourcc, render_fps, (w, h))
+                    render_idx = 0
+                    
+                    while cap_render.isOpened():
+                        ret, frame = cap_render.read()
+                        if not ret:
+                            break
+                        render_idx += 1
+                        
                         if render_idx in tracklets[tid]['boxes']:
                             bx1, by1, bx2, by2 = tracklets[tid]['boxes'][render_idx]
-                            target_frames_found += 1
                             
-                            # High-visibility vibrant green tracking frame
-                            cv2.rectangle(frame, (bx1, by1), (bx2, by2), (87, 248, 4), 3)
+                            # Distinctive vibrant tracking box exclusively for this ranked subject
+                            box_color = (87, 248, 4) if rank_idx == 1 else ((0, 215, 255) if rank_idx == 2 else (255, 144, 30))
+                            cv2.rectangle(frame, (bx1, by1), (bx2, by2), box_color, 3)
                             
-                            label = f"TARGET ACQUIRED | ID #{tid}"
+                            label_match = max_face_per_id.get(tid, 0.0)
+                            label = f"RANK #{rank_idx} | ID #{tid} | MATCH: {label_match:.1%}"
                             (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-                            cv2.rectangle(frame, (bx1, max(0, by1 - 30)), (bx1 + tw + 14, by1), (87, 248, 4), -1)
+                            cv2.rectangle(frame, (bx1, max(0, by1 - 30)), (bx1 + tw + 14, by1), box_color, -1)
                             cv2.putText(frame, label, (bx1 + 7, max(15, by1 - 8)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
                             
-                    out_writer.write(frame)
+                            if is_slow_mo:
+                                sm_text = "⚠️ FORENSIC SLOW-MOTION ENHANCEMENT (3X SPEED)"
+                                cv2.putText(frame, sm_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+                                
+                        out_writer.write(frame)
+                        
+                    cap_render.release()
+                    out_writer.release()
                     
-                cap_render.release()
-                out_writer.release()
-                os.remove(tfile.name)
-                
-                # Ensure universal HTML5 browser playback via fast ffmpeg remux if available on Windows
-                import subprocess
-                try:
-                    subprocess.run(["ffmpeg", "-y", "-i", out_filename, "-vcodec", "libx264", "-acodec", "aac", "-f", "mp4", "web_compatible_out.mp4"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    if os.path.exists("web_compatible_out.mp4") and os.path.getsize("web_compatible_out.mp4") > 0:
-                        os.replace("web_compatible_out.mp4", out_filename)
-                except Exception:
-                    pass
+                    # Universal web browser compatibility via ffmpeg remux
+                    try:
+                        subprocess.run(["ffmpeg", "-y", "-i", raw_fname, "-vcodec", "libx264", "-acodec", "aac", "-f", "mp4", out_fname], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        if os.path.exists(out_fname) and os.path.getsize(out_fname) > 0:
+                            if os.path.exists(raw_fname): os.remove(raw_fname)
+                        else:
+                            os.replace(raw_fname, out_fname)
+                    except Exception:
+                        if os.path.exists(raw_fname): os.replace(raw_fname, out_fname)
+                        
+                    target_video_files[tid] = out_fname
+                    
+                if os.path.exists(tfile.name):
+                    os.remove(tfile.name)
                 
                 t1 = time.time()
                 exec_time = round(t1 - t0, 2)
                 progress_bar.progress(1.0)
-                status_text.markdown("✅ **Sequence Complete: Surveillance Evaluation Solved!**")
+                status_text.markdown("✅ **Sequence Complete: Forensic Multi-Candidate Report Ready!**")
                 
-                # --- PHASE 5: RESULTS & EVIDENCE SHOWCASE ---
+                # --- PHASE 5: RESULTS & RANKED FORENSIC EVIDENCE SHOWCASE ---
                 st.write("---")
-                st.markdown("### 🌟 Surveillance Investigation Results")
+                st.markdown("### 🏆 Surveillance Investigation & Ranked Threat Report")
+                st.markdown("<p style='color:#64748b; font-size:0.95rem;'>Isolated candidate videos generated in decreasing match probability. Subjects appearing under 3 seconds automatically receive 3x forensic slow-motion zoom.</p>", unsafe_allow_html=True)
                 
                 m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-                m_col1.metric("Validated Target IDs", f"{len(TARGET_IDS)} Track(s)")
-                m_col2.metric("Target Presence", f"{target_frames_found} Frames")
-                m_col3.metric("Peak Face Match", f"{max(max_face_per_id.values(), default=0.0):.2%}")
-                m_col4.metric("Processing Time", f"{exec_time}s")
+                m_col1.metric("Validated Candidate Tracks", f"{len(ranked_targets)} Video(s)")
+                m_col2.metric("Prime Subject ID", f"#{ranked_targets[0] if ranked_targets else 'N/A'}")
+                m_col3.metric("Peak Biometric Certainty", f"{max(max_face_per_id.values(), default=0.0):.2%}")
+                m_col4.metric("Engine Compute Duration", f"{exec_time}s")
                 
                 st.write("")
-                v_col, e_col = st.columns([1.3, 1], gap="large")
                 
-                with v_col:
-                    st.markdown("#### 🟢 Verified Video Footage")
-                    with open(out_filename, "rb") as vf:
-                        v_bytes = vf.read()
-                    st.video(v_bytes, format="video/mp4")
-                    st.download_button(
-                        label="💾 Download Verified Target Video (MP4)",
-                        data=v_bytes,
-                        file_name="ClearSight_Verified_Target.mp4",
-                        mime="video/mp4"
-                    )
+                for rank_idx, tid in enumerate(ranked_targets, start=1):
+                    match_score = max_face_per_id.get(tid, 0.0)
+                    presence_sec = target_presence_stats[tid] / float(max(1, fps))
+                    is_sm = (target_presence_stats[tid] < int(fps * 3.0)) and (target_presence_stats[tid] > 0)
                     
-                with e_col:
-                    st.markdown("#### 📸 Biometric Verification Evidence")
-                    st.markdown("<p style='color:#64748b; font-size:0.9rem;'>Automated evidence snapshots collected during positive facial lock.</p>", unsafe_allow_html=True)
+                    rank_badge = "🏆 Match #1: Definitive Prime Subject (Highest Probability)" if rank_idx == 1 else f"🥈 Match #{rank_idx}: Secondary Candidate Profile (Probable Accomplier / Variant)"
+                    bg_color = "#f0fdf4" if rank_idx == 1 else "#f8fafc"
                     
-                    evidence_shots = []
-                    for tid in TARGET_IDS:
-                        for sim, img in tracklets[tid]['proofs']:
-                            evidence_shots.append((sim, img))
-                    evidence_shots.sort(key=lambda x: x[0], reverse=True)
-                    
-                    if evidence_shots:
-                        for idx, (sim, img_snap) in enumerate(evidence_shots[:3]):
-                            img_rgb = cv2.cvtColor(img_snap, cv2.COLOR_BGR2RGB)
-                            st.image(img_rgb, caption=f"Evidence #{idx+1} (Biometric Match: {sim:.2%})", use_container_width=True)
-                    else:
-                        st.info("ℹ️ Target was tracked successfully via posture/motion, but no direct close-up frontal snapshots were captured for evidence display.")
+                    with st.expander(f"{rank_badge} — Track #{tid} (Biometric Certainty: {match_score:.2%})", expanded=(rank_idx <= 2)):
+                        v_col, e_col = st.columns([1.3, 1], gap="large")
+                        
+                        with v_col:
+                            st.markdown(f"#### 🎥 Isolated Target Surveillance Video {'(⚠️ 3x Slow-Mo Enhanced)' if is_sm else ''}")
+                            v_file = target_video_files.get(tid)
+                            if v_file and os.path.exists(v_file):
+                                with open(v_file, "rb") as vf:
+                                    v_bytes = vf.read()
+                                st.video(v_bytes, format="video/mp4")
+                                st.download_button(
+                                    label=f"💾 Download Rank-{rank_idx} Target Video (ID #{tid})",
+                                    data=v_bytes,
+                                    file_name=f"ClearSight_Rank{rank_idx}_ID{tid}.mp4",
+                                    mime="video/mp4",
+                                    key=f"dl_btn_{tid}_{rank_idx}"
+                                )
+                            if is_sm:
+                                st.caption("⚡ **Forensic Slow-Motion Intervention:** Because this candidate was visible for under 3 seconds in live playback, the rendering engine automatically generated a 3x slow-motion analysis clip to permit accurate judicial and investigative evaluation.")
+                                
+                        with e_col:
+                            st.markdown("#### 📸 Top-3 Biometric Evidence Snapshots (SS)")
+                            st.markdown(f"<p style='color:#64748b; font-size:0.85rem;'>Total Target Visibility: <b>{target_presence_stats[tid]} frames (~{presence_sec:.1f}s)</b></p>", unsafe_allow_html=True)
+                            
+                            evidence_shots = []
+                            for sim, img in tracklets[tid]['proofs']:
+                                evidence_shots.append((sim, img))
+                            evidence_shots.sort(key=lambda x: x[0], reverse=True)
+                            
+                            if evidence_shots:
+                                for idx, (sim, img_snap) in enumerate(evidence_shots[:3]):
+                                    img_rgb = cv2.cvtColor(img_snap, cv2.COLOR_BGR2RGB)
+                                    st.image(img_rgb, caption=f"Rank #{rank_idx} Evidence #{idx+1} | Match: {sim:.2%}", use_container_width=True)
+                            else:
+                                st.info("ℹ️ Target tracked successfully via motion/posture persistence; direct frontal portrait crops unavailable.")
+                        st.divider()
 
 # =====================================================================
 # TAB 2: OFFICIAL LAW ENFORCEMENT OPERATIONAL FIELD MANUAL
