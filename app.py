@@ -533,19 +533,18 @@ with tab_engine:
                     
                     rank_badge = "🏆 Match #1: Definitive Prime Subject (Highest Probability)" if rank_idx == 1 else f"🥈 Match #{rank_idx}: Secondary Candidate Profile (Probable Accomplier / Variant)"
                     
-                    with st.expander(f"{rank_badge} — Track #{tid} (Biometric Certainty: {match_score:.2%})", expanded=(rank_idx <= 2)):
+                    with st.expander(f"{rank_badge} — Track #{tid} (Biometric Certainty: {match_score:.2%})", expanded=(rank_idx == 1)):
                         v_col, e_col = st.columns([1.2, 1], gap="large")
                         
                         with v_col:
                             st.markdown("#### 🎥 Original Surveillance Output (Normal Speed)")
                             v_file = target_video_files.get(tid)
                             if v_file and os.path.exists(v_file):
-                                with open(v_file, "rb") as vf:
-                                    v_bytes = vf.read()
-                                st.video(v_bytes, format="video/mp4")
+                                # Native disk file streaming completely eliminates Base64 DOM RAM bloat and stops browser scroll lag
+                                st.video(v_file, format="video/mp4")
                                 st.download_button(
                                     label=f"💾 Download Original Output (ID #{tid})",
-                                    data=v_bytes,
+                                    data=open(v_file, "rb"),
                                     file_name=f"ClearSight_Rank{rank_idx}_ID{tid}.mp4",
                                     mime="video/mp4",
                                     key=f"dl_orig_{tid}_{rank_idx}"
@@ -553,14 +552,13 @@ with tab_engine:
                                 
                             st.write("")
                             if is_sm and tid in target_slowmo_files and os.path.exists(target_slowmo_files[tid]):
+                                sm_file = target_slowmo_files[tid]
                                 st.markdown("#### ⚡ Fractional Slow-Mo Enhancement (<3s Target Appearance)")
                                 st.caption(f"ℹ️ Subject appeared for only **{presence_sec:.1f} seconds**. Below is the exact fractional clip reproduced at **3x slow-motion** for forensic gait analysis:")
-                                with open(target_slowmo_files[tid], "rb") as smf:
-                                    sm_bytes = smf.read()
-                                st.video(sm_bytes, format="video/mp4")
+                                st.video(sm_file, format="video/mp4")
                                 st.download_button(
                                     label=f"💾 Download Slow-Mo Fraction (ID #{tid})",
-                                    data=sm_bytes,
+                                    data=open(sm_file, "rb"),
                                     file_name=f"ClearSight_SlowMo_Rank{rank_idx}_ID{tid}.mp4",
                                     mime="video/mp4",
                                     key=f"dl_sm_{tid}_{rank_idx}"
