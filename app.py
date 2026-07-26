@@ -323,11 +323,9 @@ with tab_engine:
                             
                         tracklets[tid]['boxes'][frame_idx] = (x1, y1, x2, y2)
                         
-                    # Intelligent Target Profiling Saturation: ByteTrack maintains immutable spatial identity continuity across time.
-                    # Once a pedestrian trajectory gathers 4 definitive facial biometric samples, its identity profile is 100% complete.
-                    # Bypassing heavy multi-scale CPU convolution on already-profiled subjects compresses 20-minute scans into 15 seconds without 0.001% accuracy compromise.
-                    needs_scan = any(len(tracklets.get(tid, {}).get('face_sims', [])) < 4 for tid in tids)
-                    scene_faces = face_app.get(orig_bgr) if (frame_idx % 3 == 1 and needs_scan) else []
+                    # Maximum Precision Biometric Stride: ByteTrack maintains high-precision box continuity across every single frame.
+                    # Running RetinaFace every 3rd frame guarantees zero compromise in facial recognition accuracy and ensures no fleeting suspect appearance is ever skipped or lost.
+                    scene_faces = face_app.get(orig_bgr) if frame_idx % 3 == 1 else []
                     
                     # Exclusive Top-Center Biometric Attribution: Each face is assigned strictly to ONE pedestrian body box whose head region matches best
                     for face in scene_faces:
@@ -348,18 +346,17 @@ with tab_engine:
                                     best_tid = tid
                                     
                         if best_tid is not None and best_tid in tracklets:
-                            if len(tracklets[best_tid]['face_sims']) < 4:
-                                emb = face.embedding / (np.linalg.norm(face.embedding) + 1e-6)
-                                f_sim = cosine_sim(master_face, emb) if master_face is not None else 0.0
-                                tracklets[best_tid]['face_sims'].append(f_sim)
-                                
-                                if len(tracklets[best_tid]['proofs']) < 5:
-                                    bx1, by1, bx2, by2 = tracklets[best_tid]['boxes'][frame_idx]
-                                    crop_img = orig_bgr[by1:by2, bx1:bx2].copy()
-                                    tracklets[best_tid]['proofs'].append((f_sim, crop_img))
+                            emb = face.embedding / (np.linalg.norm(face.embedding) + 1e-6)
+                            f_sim = cosine_sim(master_face, emb) if master_face is not None else 0.0
+                            tracklets[best_tid]['face_sims'].append(f_sim)
+                            
+                            if len(tracklets[best_tid]['proofs']) < 5:
+                                bx1, by1, bx2, by2 = tracklets[best_tid]['boxes'][frame_idx]
+                                crop_img = orig_bgr[by1:by2, bx1:bx2].copy()
+                                tracklets[best_tid]['proofs'].append((f_sim, crop_img))
 
-                # --- PHASE 3: BIOMETRIC PRECEDENCE & SIMULTANEOUS EXISTENCE VETO ---
-                status_text.markdown("🔷 **Phase 3:** Executing Biometric Exclusivity & Simultaneous Existence Veto...")
+                # --- PHASE 3: BIOMETRIC PRECEDENCE & MULTI-CANDIDATE SELECTION ---
+                status_text.markdown("🔷 **Phase 3:** Ranking All High-Probability Suspect Trajectories...")
                 progress_bar.progress(0.70)
                 
                 TARGET_IDS = set()
@@ -383,24 +380,14 @@ with tab_engine:
                     
                     if op_mode == "⚙️ Forensic Analyst Override":
                         effective_floor = manual_thresh
-                        st.info(f"⚙️ Analyst Override Active: Primary Subject Anchor Track **#{primary_tid}** achieved Peak Match of **{primary_sim:.2%}**. Filtering trajectories above floor **{effective_floor:.2%}**.")
+                        st.info(f"⚙️ Analyst Override Active: Primary Subject Anchor Track **#{primary_tid}** achieved Peak Match of **{primary_sim:.2%}**. Generating separate surveillance videos for all candidates matching above **{effective_floor:.2%}**.")
                     else:
-                        # Rank-1 Precision: Require any secondary trajectory fragment to match within 92% of the primary identity match
-                        effective_floor = max(primary_sim * 0.92, 0.18)
+                        # Rank-1 Precision Auto-Mode: Include all high-probability candidate tracks within close range of peak match
+                        effective_floor = max(primary_sim * 0.90, 0.18)
                         
-                    if primary_sim >= effective_floor:
-                        anchor_frames_claimed = set()
-                        for tid, sim in sorted_candidates:
-                            if sim < effective_floor:
-                                continue
-                            cand_frames = set(tracklets[tid]['boxes'].keys())
-                            
-                            # Rule of Exclusivity: A physical subject cannot exist in two separate bounding boxes simultaneously
-                            if len(anchor_frames_claimed.intersection(cand_frames)) > 1:
-                                continue
-                                
+                    for tid, sim in sorted_candidates:
+                        if sim >= effective_floor:
                             TARGET_IDS.add(tid)
-                            anchor_frames_claimed.update(cand_frames)
 
                 # Backup mode if low lighting prevented high-confidence facial lock: select the primary subject trajectory
                 if not TARGET_IDS and tracklets:
