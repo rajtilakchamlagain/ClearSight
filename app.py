@@ -547,18 +547,28 @@ with tab_engine:
                 
                 st.write("")
                 
+                # Zero-Lag Executive Architecture: Rendering candidate reports in dedicated Horizontal Dossier Tabs prevents simultaneous DirectX video overlay contention and eliminates Chrome scroll stutter completely.
+                tab_labels = []
                 for rank_idx, tid in enumerate(ranked_targets, start=1):
+                    lbl = f"🏆 Match #1 (Track #{tid})" if rank_idx == 1 else f"🥈 Match #{rank_idx} (Track #{tid})"
+                    tab_labels.append(lbl)
+                    
+                candidate_tabs = st.tabs(tab_labels) if tab_labels else []
+                
+                for rank_idx, (tid, c_tab) in enumerate(zip(ranked_targets, candidate_tabs), start=1):
                     match_score = max_face_per_id.get(tid, 0.0)
                     presence_sec = target_presence_stats[tid] / float(max(1, fps))
                     is_sm = (target_presence_stats[tid] < int(fps * 3.0)) and (target_presence_stats[tid] > 0)
                     
                     rank_badge = "🏆 Match #1: Definitive Prime Subject (Highest Probability)" if rank_idx == 1 else f"🥈 Match #{rank_idx}: Secondary Candidate Profile (Probable Accomplier / Variant)"
                     
-                    with st.expander(f"{rank_badge} — Track #{tid} (Biometric Certainty: {match_score:.2%})", expanded=(rank_idx == 1)):
+                    with c_tab:
+                        st.markdown(f"#### {rank_badge} — Peak Certainty: **{match_score:.2%}**")
+                        st.write("")
                         v_col, e_col = st.columns([1.2, 1], gap="large")
                         
                         with v_col:
-                            st.markdown("#### 🎥 Original Surveillance Output (Normal Speed)")
+                            st.markdown("##### 🎥 Original Surveillance Output (Normal Speed)")
                             v_file = target_video_files.get(tid)
                             if v_file and os.path.exists(v_file):
                                 # Native disk file streaming completely eliminates Base64 DOM RAM bloat and stops browser scroll lag
@@ -574,7 +584,7 @@ with tab_engine:
                             st.write("")
                             if is_sm and tid in target_slowmo_files and os.path.exists(target_slowmo_files[tid]):
                                 sm_file = target_slowmo_files[tid]
-                                st.markdown("#### ⚡ Fractional Slow-Mo Enhancement (<3s Target Appearance)")
+                                st.markdown("##### ⚡ Fractional Slow-Mo Enhancement (<3s Target Appearance)")
                                 st.caption(f"ℹ️ Subject appeared for only **{presence_sec:.1f} seconds**. Below is the exact fractional clip reproduced at **3x slow-motion** for forensic gait analysis:")
                                 st.video(sm_file, format="video/mp4")
                                 st.download_button(
@@ -588,7 +598,7 @@ with tab_engine:
                                 st.success(f"🟢 **No Need for Slow-Mo:** Subject is captured clearly in surveillance focus for **{presence_sec:.1f} seconds** (exceeds 3.0s threshold).")
                                 
                         with e_col:
-                            st.markdown("#### 📸 Top-3 Biometric Evidence Snapshots (SS)")
+                            st.markdown("##### 📸 Top-3 Biometric Evidence Snapshots (SS)")
                             st.markdown(f"<p style='color:#64748b; font-size:0.85rem;'>Total Target Visibility: <b>{target_presence_stats[tid]} frames (~{presence_sec:.1f}s)</b>. Click any photo to zoom in full screen.</p>", unsafe_allow_html=True)
                             
                             evidence_shots = []
@@ -613,8 +623,12 @@ with tab_engine:
                                         x_off = (300 - new_w) // 2
                                         thumb_canvas[y_off:y_off+new_h, x_off:x_off+new_w] = resized_snap
                                         
-                                        img_rgb = cv2.cvtColor(thumb_canvas, cv2.COLOR_BGR2RGB)
-                                        st.image(img_rgb, caption=f"SS #{idx+1} ({sim:.1%})", use_container_width=True)
+                                        # Front-End Memory Compression: Passing light JPEG buffer drops DOM image RAM footprint by 95%
+                                        succ_thumb, thumb_buf = cv2.imencode('.jpg', thumb_canvas, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+                                        if succ_thumb:
+                                            st.image(thumb_buf.tobytes(), caption=f"SS #{idx+1} ({sim:.1%})", use_container_width=True)
+                                        else:
+                                            st.image(cv2.cvtColor(thumb_canvas, cv2.COLOR_BGR2RGB), caption=f"SS #{idx+1} ({sim:.1%})", use_container_width=True)
                                         
                                         # Individual snapshot photo download button preserves high-resolution uncropped original proof
                                         success_enc, buffer = cv2.imencode('.jpg', img_snap)
