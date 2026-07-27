@@ -567,37 +567,29 @@ with tab_engine:
                         st.markdown(f"<p style='color:#64748b; font-size:0.9rem;'>Total Target Visibility: <b>{target_presence_stats[tid]} frames (~{presence_sec:.1f}s)</b>. Automated forensic pipeline verified identity stability.</p>", unsafe_allow_html=True)
                         st.write("")
                         
-                        # Firefox Anti-Lag Protection: Auto-mount video player exclusively on Rank-1. Secondary tabs render on demand to prevent WebSocket memory bloat.
-                        load_video = True
-                        if rank_idx > 1:
-                            load_video = st.checkbox(f"▶️ Activate & View Video Surveillance Player for Track #{tid}", value=False, key=f"view_chk_{tid}_{rank_idx}")
-                            if not load_video:
-                                st.info(f"⚡ **Performance Guard:** Video streams for Match #{rank_idx} are safely archived on disk (`{target_video_files.get(tid)}`). Check the box above to load video into player instantly without lagging browser scrolling.")
-                        
-                        if load_video:
-                            if is_sm and tid in target_slowmo_files and os.path.exists(target_slowmo_files[tid]):
-                                # Balanced Dual-Player Presentation: When Slow-Mo is required, Normal and Slow-Mo stream in symmetric side-by-side columns
-                                vid_c1, vid_c2 = st.columns(2, gap="medium")
-                                with vid_c1:
-                                    st.markdown("##### 🎥 Original Output (Normal Speed)")
-                                    v_file = target_video_files.get(tid)
-                                    if v_file and os.path.exists(v_file):
-                                        st.video(v_file, format="video/mp4")
-                                        st.caption(f"💾 File: `{v_file}` | Download: click `⋮` corner menu.")
-                                with vid_c2:
-                                    sm_file = target_slowmo_files[tid]
-                                    st.markdown("##### ⚡ 3x Slow-Mo (<3s Appearance)")
-                                    st.video(sm_file, format="video/mp4")
-                                    st.caption(f"💾 File: `{sm_file}` | Download: click `⋮` corner menu.")
-                            else:
-                                # Clean Single-Player Presentation
-                                st.markdown("##### 🎥 Original Surveillance Output (Normal Speed)")
+                        if is_sm and tid in target_slowmo_files and os.path.exists(target_slowmo_files[tid]):
+                            # Balanced Dual-Player Presentation: When Slow-Mo is required, Normal and Slow-Mo stream in symmetric side-by-side columns
+                            vid_c1, vid_c2 = st.columns(2, gap="medium")
+                            with vid_c1:
+                                st.markdown("##### 🎥 Original Output (Normal Speed)")
                                 v_file = target_video_files.get(tid)
                                 if v_file and os.path.exists(v_file):
                                     st.video(v_file, format="video/mp4")
-                                    st.caption(f"💾 **Export Ready:** Saved locally as `{v_file}`. To download to another disk, click the **three dots (⋮)** on the bottom right of the player (or right-click video and choose Save Video As).")
-                                st.success(f"🟢 **No Need for Slow-Mo:** Subject is captured clearly in surveillance focus for **{presence_sec:.1f} seconds** (exceeds 3.0s threshold).")
-                                
+                                    st.caption(f"💾 File: `{v_file}` | Download: click `⋮` corner menu.")
+                            with vid_c2:
+                                sm_file = target_slowmo_files[tid]
+                                st.markdown("##### ⚡ 3x Slow-Mo (<3s Appearance)")
+                                st.video(sm_file, format="video/mp4")
+                                st.caption(f"💾 File: `{sm_file}` | Download: click `⋮` corner menu.")
+                        else:
+                            # Clean Single-Player Presentation
+                            st.markdown("##### 🎥 Original Surveillance Output (Normal Speed)")
+                            v_file = target_video_files.get(tid)
+                            if v_file and os.path.exists(v_file):
+                                st.video(v_file, format="video/mp4")
+                                st.caption(f"💾 **Export Ready:** Saved locally as `{v_file}`. To download to another disk, click the **three dots (⋮)** on the bottom right of the player (or right-click video and choose Save Video As).")
+                            st.success(f"🟢 **No Need for Slow-Mo:** Subject is captured clearly in surveillance focus for **{presence_sec:.1f} seconds** (exceeds 3.0s threshold).")
+                            
                         st.write("")
                         st.markdown("##### 📸 Verified Biometric Evidence Gallery (Standardized 16:9 Geometry)")
                         
