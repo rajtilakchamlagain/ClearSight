@@ -7,7 +7,7 @@ import subprocess
 # =====================================================================
 # TASK 2: CLEANUP PROJECT DIRECTORY
 # =====================================================================
-print("🧹 STARTING PROJECT WORKSPACE CLEANUP...")
+print("[INFO] STARTING PROJECT WORKSPACE CLEANUP...")
 proj_dir = r"C:\Users\rajti\Downloads\Projects\ACADEMIC INTERNSHIP\ClearSight_Project"
 os.chdir(proj_dir)
 
@@ -15,14 +15,14 @@ os.chdir(proj_dir)
 for ipynb in glob.glob("*.ipynb"):
     try:
         os.remove(ipynb)
-        print(f"   Deleted unnecessary Jupyter notebook: {ipynb}")
+        print(f"   [DELETE] Removed unnecessary Jupyter notebook: {ipynb}")
     except Exception as e:
         pass
 
 if os.path.exists(".ipynb_checkpoints"):
     try:
         shutil.rmtree(".ipynb_checkpoints")
-        print("   Removed .ipynb_checkpoints directory.")
+        print("   [DELETE] Removed .ipynb_checkpoints directory.")
     except Exception:
         pass
 
@@ -40,29 +40,30 @@ for pat in mp4_patterns:
         except Exception:
             pass
 
-print(f"   Deleted {deleted_videos_count} obsolete output video files (Reclaimed {remedied_bytes / (1024*1024):.2f} MB of disk space!).")
+print(f"   [DELETE] Removed {deleted_videos_count} obsolete output video files (Reclaimed {remedied_bytes / (1024*1024):.2f} MB of disk space!).")
 
 # 3. Clean up root report drafts so everything resides cleanly inside PDFs folder
 for old_rep in ["ClearSight_Comprehensive_Report.docx", "ClearSight_Final_Report.pdf", "ClearSight_Final_Report_V2.pdf", "ClearSight_Master_Report.html", "ClearSight_Presentation_Script.pdf"]:
     if os.path.exists(old_rep):
         try:
             os.remove(old_rep)
+            print(f"   [DELETE] Removed root draft document: {old_rep}")
         except Exception:
             pass
 
 # Create destination folder for master presentations and documentation
 pdf_dir = os.path.join(proj_dir, "PDFs")
 os.makedirs(pdf_dir, exist_ok=True)
-print(f"📁 Verified documentation folder: {pdf_dir}")
+print(f"[INFO] Verified documentation folder: {pdf_dir}")
 
 # =====================================================================
 # TASK 1: BUILD THE MASTER PRESENTATION SCRIPT & TECHNICAL PDF
 # =====================================================================
-print("📖 VERIFYING REPORTLAB INSTALLATION...")
+print("[INFO] VERIFYING REPORTLAB INSTALLATION...")
 try:
     import reportlab
 except ImportError:
-    print("   Installing reportlab library for high-end PDF generation...")
+    print("   [INFO] Installing reportlab library for high-end PDF generation...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "reportlab"])
     import reportlab
 
@@ -327,7 +328,7 @@ phases = [
     ("PHASE 3: Biometric Precedence & Autonomous Spectral Gap Selection", 
      "As tracklets accumulate across the video timeframe, Phase 3 gathers the highest recorded cosine similarity scores for every identified trajectory ID. Here, the system executes either Forensic Analyst Override (manual floor) or our revolutionary Autonomous Spectral Gap Lock (unsupervised cliff detection) to cleanly decouple confirmed targets from background bystanders, assigning emerald green tracking boxes exclusively to Match #1."),
     ("PHASE 4: Evidential Dossier Synthesis & Fractional Slow-Motion Reconstruction", 
-     "The system iterates through the processed video frames to generate clean annotated MP4 video files. Here, a critical forensic rule occurs: if a suspect track let appears for less than 3.0 seconds (e.g., a fleeting walkaway past an airport doorway), Phase 4 automatically spawns a secondary rendering pipeline that reconstructs that specific clip segment at 3x slow-motion, magnifying gait and posture kinetics for courtroom evaluation."),
+     "The system iterates through the processed video frames to generate clean annotated MP4 video files. Here, a critical forensic rule occurs: if a suspect tracklet appears for less than 3.0 seconds (e.g., a fleeting walkaway past an airport doorway), Phase 4 automatically spawns a secondary rendering pipeline that reconstructs that specific clip segment at 3x slow-motion, magnifying gait and posture kinetics for courtroom evaluation."),
     ("PHASE 5: Zero-Lag Interactive Dashboard & 16:9 Cinema Showcase", 
      "All validated evidence is exported directly to disk storage and mounted onto an enterprise-grade Streamlit front-end dashboard. To guarantee professional visual harmony, every evidence snapshot is mathematically rescaled and padded onto a pristine 400x225 widescreen cinema thumbnail canvas (`#0f172a` deep slate framing), eliminating visual layout height irregularities completely while protecting web browser RAM.")
 ]
@@ -354,13 +355,13 @@ story.append(Paragraph("If a developer blindly hardcodes a static threshold of <
 story.append(Spacer(1, 8))
 
 story.append(Paragraph("<b>The Mathematical Solution: Unsupervised Spectral Gap Maximal Derivative Analysis:</b>", h2_style))
-story.append(Paragraph("When set to <b>⚛️ Autonomous Spectral Gap Lock (Auto Mode)</b>, ClearSight AI completely abandons static guessing. Instead, it evaluates the structural math of the ranked suspect list in real time using maximal consecutive derivative differences:", body_style))
+story.append(Paragraph("When set to <b>Autonomous Spectral Gap Lock (Auto Mode)</b>, ClearSight AI completely abandons static guessing. Instead, it evaluates the structural math of the ranked suspect list in real time using maximal consecutive derivative differences:", body_style))
 
 math_steps = [
-    "<b>Step 1 (Descending Vector Sorting):</b> All identified candidate track scores within the surveillance clip are arranged in descending mathematical order:<br/><i>S = [ s<sub>1</sub>, s<sub>2</sub>, s<sub>3</sub>, ..., s<sub>n</sub> ]</i> where <i>s<sub>1</sub> ≥ s<sub>2</sub> ≥ s<sub>3</sub></i>.",
-    "<b>Step 2 (Consecutive Delta Computation):</b> The engine calculates the absolute numerical difference (the mathematical derivative drop-off) between every consecutive ranked candidate pair:<br/><i>Δ<sub>i</sub> = s<sub>i</sub> - s<sub>i+1</sub></i>",
-    "<b>Step 3 (Maximal Cliff Identification):</b> The system isolates index <i>k</i> where the drop-off delta <i>Δ<sub>k</sub></i> achieves its maximum positive value across the entire scene distribution. This point represents a dramatic structural boundary—the literal transition between confirmed target identities and background civilian noise.",
-    "<b>Step 4 (Dynamic Operational Gate Placement):</b> An autonomous operational threshold floor is dynamically set exactly inside that spectral drop-off gap:<br/><i>Threshold<sub>auto</sub> = s<sub>k+1</sub> + 0.5 × ( s<sub>k</sub> - s<sub>k+1</sub> )</i>"
+    "<b>Step 1 (Descending Vector Sorting):</b> All identified candidate track scores within the surveillance clip are arranged in descending mathematical order:<br/><i>S = [ s<sub>1</sub>, s<sub>2</sub>, s<sub>3</sub>, ..., s<sub>n</sub> ]</i> where <i>s<sub>1</sub> >= s<sub>2</sub> >= s<sub>3</sub></i>.",
+    "<b>Step 2 (Consecutive Delta Computation):</b> The engine calculates the absolute numerical difference (the mathematical derivative drop-off) between every consecutive ranked candidate pair:<br/><i>Delta<sub>i</sub> = s<sub>i</sub> - s<sub>i+1</sub></i>",
+    "<b>Step 3 (Maximal Cliff Identification):</b> The system isolates index <i>k</i> where the drop-off delta <i>Delta<sub>k</sub></i> achieves its maximum positive value across the entire scene distribution. This point represents a dramatic structural boundary—the literal transition between confirmed target identities and background civilian noise.",
+    "<b>Step 4 (Dynamic Operational Gate Placement):</b> An autonomous operational threshold floor is dynamically set exactly inside that spectral drop-off gap:<br/><i>Threshold<sub>auto</sub> = s<sub>k+1</sub> + 0.5 * ( s<sub>k</sub> - s<sub>k+1</sub> )</i>"
 ]
 for ms in math_steps:
     story.append(Paragraph(f"{ms}", body_style))
@@ -408,7 +409,7 @@ demo_script = (
     "\"As you can observe on my live application screen at localhost:8502, our dashboard features a streamlined, high-speed investigation desk. I will now perform a live operational test using authentic crowded footage.<br/><br/>"
     "First, on the left pane, I will upload a high-resolution studio reference photo of our known target subject downloaded directly from Google. Notice that our engine instantly projects this photograph into a 512-dimensional angular hypersphere signature.<br/><br/>"
     "Second, on the right pane, I upload an uncut, wide-angle video clip of a dense public crowd or street march. Notice that the target is just one small individual walking amidst dozens of ordinary strangers without any camera close-up zooms.<br/><br/>"
-    "Now, directing your attention to the operational sidebar, notice that I am setting the system to our exclusive <b>⚛️ Autonomous Spectral Gap Lock</b> mode. In traditional systems, operators must guess a magic threshold number. Our intelligent platform completely eliminates human guesswork by running an unsupervised algorithm that detects the sharpest difference-of-consecutive-scores—a mathematical cliff separating our true suspect from general background crowd noise.<br/><br/>"
+    "Now, directing your attention to the operational sidebar, notice that I am setting the system to our exclusive <b>Autonomous Spectral Gap Lock</b> mode. In traditional systems, operators must guess a magic threshold number. Our intelligent platform completely eliminates human guesswork by running an unsupervised algorithm that detects the sharpest difference-of-consecutive-scores—a mathematical cliff separating our true suspect from general background crowd noise.<br/><br/>"
     "I now click <b>Initialize Search</b>. As the pipeline scans at rapid frame speeds, watch how ByteTrack maintains spatial bounding continuity without dropping candidate IDs even when subjects cross paths.<br/><br/>"
     "And here are our instantaneous results: In Tab 1, our primary suspect Track #1 is clearly isolated in emerald green with a confirmed biometric certainty score. Beneath the video, observe our clean, standardized <b>16:9 Widescreen Biometric Evidence Gallery</b>, showcasing high-resolution portrait proofs that investigators can immediately export for courtroom proceedings. Furthermore, because our front-end relies on zero-lag disk streaming architectures, notice how effortlessly we can navigate between secondary candidates without a single browser delay or computation reset.\""
 )
@@ -459,4 +460,4 @@ for q_text, a_text in qa_list:
     story.append(Spacer(1, 4))
 
 doc.build(story)
-print(f"\n🎉 MASTER PDF SUCCESS: Saved magnificently to {pdf_filepath}")
+print(f"\n[SUCCESS] MASTER PDF COMPACTED & SAVED MAGNIFICENTLY: {pdf_filepath}")
