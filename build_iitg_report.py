@@ -122,6 +122,9 @@ body_justify = ParagraphStyle(
     alignment=TA_JUSTIFY, textColor=COLOR_PRIMARY, spaceAfter=10
 )
 
+# Alias body_style to body_justify for universal consistency across table elements
+body_style = body_justify
+
 body_bold = ParagraphStyle(
     'FormalBodyBold', parent=body_justify, fontName='Helvetica-Bold'
 )
@@ -271,7 +274,7 @@ story.append(Paragraph(abs_text_3, body_justify))
 story.append(Spacer(1, 8))
 
 abs_text_4 = (
-    f"The complete system was developed and evaluated on a local workstation equipped with an <b>{gpu_name}</b> and <b>{total_ram_gb} GB RAM</b>. By innovating native disk socket video streaming and standardizing biometric evidence onto 16:9 widescreen cinema containers, the front-end achieved a <b>5,000x payload compression ratio</b>, eradicating browser memory freezes and delivering a zero-lag interactive <b>Streamlit</b> investigation dashboard capable of court-admissible forensic reporting."
+    f"The complete system was developed and evaluated on a local workstation equipped with an <b>{gpu_name}</b>, an <b>{cpu_name} processor</b>, and <b>{total_ram_gb} GB RAM</b>. By innovating native disk socket video streaming and standardizing biometric evidence onto 16:9 widescreen cinema containers, the front-end achieved a <b>5,000x payload compression ratio</b>, eradicating browser memory freezes and delivering a zero-lag interactive <b>Streamlit</b> investigation dashboard capable of court-admissible forensic reporting."
 )
 story.append(Paragraph(abs_text_4, body_justify))
 story.append(PageBreak())
@@ -366,7 +369,7 @@ story.append(Paragraph(lit_1, body_justify))
 
 story.append(Paragraph("2.2 Deep Learning in Computer Vision & Kinetic Tracking", h2_style))
 lit_2 = (
-    "The breakthrough of Convolutional Neural Networks (CNNs) revolutionized visual target localization. While multi-stage region proposal networks (such as Faster R-CNN) achieved high localization accuracy, their inference speeds remained too slow for real-time video streaming. The introduction of the You Only Look Once (YOLO) architecture bypassed proposal loops by predicting spatial bounding bounding coordinates and classification confidence simultaneously across a unified single-shot CNN grid.<br/><br/>"
+    "The breakthrough of Convolutional Neural Networks (CNNs) revolutionized visual target localization. While multi-stage region proposal networks (such as Faster R-CNN) achieved high localization accuracy, their inference speeds remained too slow for real-time video streaming. The introduction of the You Only Look Once (YOLO) architecture bypassed proposal loops by predicting spatial bounding coordinates and classification confidence simultaneously across a unified single-shot CNN grid.<br/><br/>"
     "In tandem with bounding spatial detection, tracking-by-detection frameworks emerged. Legacy tracking models discarded low-confidence detection boxes whenever a target entered a shadow or crossed behind an obstacle, destroying trajectory persistence. Recently, Zhang et al. proposed <b>ByteTrack</b>, an advanced multi-object tracking architecture that performs a two-stage data association. By pairing Intersection-over-Union (IoU) spatial matching with <b>Kalman Filter</b> kinematic predictive estimation, ByteTrack recycles low-confidence detection proposals during temporary occlusion events, maintaining continuous identity tracklets without spawning redundant IDs."
 )
 story.append(Paragraph(lit_2, body_justify))
@@ -470,7 +473,7 @@ story.append(Spacer(1, 12))
 
 story.append(Paragraph("4.2 YOLOv8 & ByteTrack Kinetic Localization", h2_style))
 yb_text = (
-    "To achieve real-time object detection across dense crowd kinetics, ClearSight AI integrates <b>Ultralytics YOLOv8</b> with custom inference adaptations. YOLOv8 processes full visual tensors in a single unified evaluation pass, outputting bounding box coordinate limits $(x_1, y_1, x_2, y_2)$ along with semantic human probability confidence.<br/><br/>"
+    "To achieve real-time object detection across dense crowd kinetics, ClearSight AI integrates <b>Ultralytics YOLOv8</b> with custom inference adaptations. YOLOv8 processes full visual tensors in a single unified evaluation pass, outputting bounding box coordinate limits (x1, y1, x2, y2) along with semantic human probability confidence.<br/><br/>"
     "To solve trajectory dropping during occlusions, the detection grid is paired with <b>ByteTrack</b> continuous tracking memory. Instead of blindly discarding low-confidence bounding proposals (which occurs in simple algorithms when a suspect steps behind an obstruction or bodyguard), ByteTrack implements a two-stage association algorithm utilizing <b>Kalman Filter</b> predictive kinematic state modeling. The Kalman Filter evaluates bounding box centroid velocities across historical frames, estimating precise spatial coordinates during occlusion gaps and re-attaching immortal ID tags upon re-emergence."
 )
 story.append(Paragraph(yb_text, body_justify))
@@ -479,8 +482,8 @@ story.append(PageBreak())
 story.append(Paragraph("4.3 Deep ArcFace 512D Biometric Feature Vector Engine", h2_style))
 biom_text = (
     "Facial recognition accuracy across unconstrained surveillance footage is accomplished by replacing superficial pixel matching with deep hypersphere geometry. Cropped facial tensors are passed through an additive angular margin convolutional network (<b>ArcFace</b>), projecting facial topography onto a continuous 512-dimensional vector array sitting on a mathematical hypersphere.<br/><br/>"
-    "When evaluating similarities between the master reference vector $\\vec{u}$ and an active surveillance candidate vector $\\vec{v}$, the engine computes <b>Cosine Similarity</b>—measuring strictly the angular orientation between vector geometries rather than magnitude:<br/><br/>"
-    "$$\\text{Sim}(\\vec{u}, \\vec{v}) = \\frac{\\vec{u} \\cdot \\vec{v}}{\\|\\vec{u}\\| \\|\\vec{v}\\|} = \\cos(\\theta)$$<br/><br/>"
+    "When evaluating similarities between the master reference vector (u) and an active surveillance candidate vector (v), the engine computes <b>Cosine Similarity</b>—measuring strictly the angular orientation between vector geometries rather than magnitude:<br/><br/>"
+    "<b>Sim(u, v) = (u . v) / ( ||u|| * ||v|| ) = cos(theta)</b><br/><br/>"
     "<b>Strategic Biometric Stride & Top-18% Attribution:</b> Executing heavy 512D face embeddings on every single frame across 30 pedestrians induces prohibitive GPU compute overhead without increasing evidential resolution. Because ByteTrack holds continuous spatial ID memory on every frame, ClearSight AI executes facial recognition every 3rd frame (Strategic Stride). Faces detected in a scene are attributed strictly to the human body whose top 18% upper chest/head center coordinate minimizes Euclidean distance to the facial bounding centroid."
 )
 story.append(Paragraph(biom_text, body_justify))
@@ -489,20 +492,20 @@ story.append(Paragraph("4.4 Autonomous Spectral Gap 'Cliff Detection' Algorithm"
 gap_text = (
     "The core theoretical contribution of this capstone is the implementation of an unsupervised thresholding architecture: the <b>Autonomous Spectral Gap Engine</b>. Rather than relying on static, error-prone human similarity percentage sliders, the pipeline mathematically interrogates the structural hierarchy of scene candidates in real time through maximal derivative analysis:<br/><br/>"
     "<b>Step 1 (Descending Ranking Array):</b> Peak cosine similarity scores for all tracked candidate trajectories in a surveillance scene are assembled and sorted in descending order:<br/>"
-    "$$S = [ s_1, s_2, s_3, \\dots, s_n ] \\quad \\text{where } s_1 \\ge s_2 \\ge s_3 \\ge \\dots \\ge s_n$$<br/>"
+    "<b>S = [ s_1, s_2, s_3, ..., s_n ] where s_1 >= s_2 >= s_3 >= ... >= s_n</b><br/><br/>"
     "<b>Step 2 (Consecutive Delta Calculus):</b> The pipeline calculates the absolute derivative differential (score drop-off) between every adjacent ranked trajectory pair:<br/>"
-    "$$\\Delta_i = s_i - s_{i+1}, \\quad \\text{for } i \\in \\{1, 2, \\dots, n-1\\}$$<br/>"
-    "<b>Step 3 (Maximal Cliff Isolation):</b> The system locates index $k$ where $\\Delta_k$ achieves its maximum positive value across the entire distribution, signifying an abrupt structural boundary separating confirmed targets from random background civilian noise:<br/>"
-    "$$k = \\arg\\max_i (\\Delta_i)$$<br/>"
+    "<b>Delta_i = s_i - s_(i+1), for i from 1 to n-1</b><br/><br/>"
+    "<b>Step 3 (Maximal Cliff Isolation):</b> The system locates index k where Delta_k achieves its maximum positive value across the entire distribution, signifying an abrupt structural boundary separating confirmed targets from random background civilian noise:<br/>"
+    "<b>k = argmax(Delta_i)</b><br/><br/>"
     "<b>Step 4 (Dynamic Gate Assignment):</b> An operational matching threshold floor is autonomously assigned directly inside the isolated drop-off gap:<br/>"
-    "$$\\text{Threshold}_{\\text{auto}} = s_{k+1} + 0.5 \\times ( s_k - s_{k+1} )$$<br/>"
+    "<b>Threshold_auto = s_(k+1) + 0.5 * ( s_k - s_(k+1) )</b><br/><br/>"
     "This unsupervised algorithmic logic ensures that whether footage is captured in a high-contrast transit plaza or a dim, rainy night street, ClearSight AI continuously self-calibrates to achieve 100% target isolation with zero false positive alarms."
 )
 story.append(Paragraph(gap_text, body_justify))
 
 story.append(Paragraph("4.5 Zero-Lag Streamlit Web Application", h2_style))
 web_text = (
-    "To provide an intuitive software tool for investigative deployment, a reactive frontend dashboard was constructed using Python and <b>Streamlit</b>. A critical systems anomaly was uncovered during initial software testing: convention web application implementations that bind large video files directly to UI download controls via `open().read()` force the backend server to read entire video binaries from disk into RAM, Base64-encode them, and inject over 250 Megabytes of raw text into the web browser Virtual DOM tree. This RAM bloat paralyzes JavaScript thread layout engines, causing severe UI stuttering during scrolling.<br/><br/>"
+    "To provide an intuitive software tool for investigative deployment, a reactive frontend dashboard was constructed using Python and <b>Streamlit</b>. A critical systems anomaly was uncovered during initial software testing: conventional web application implementations that bind large video files directly to UI download controls via `open().read()` force the backend server to read entire video binaries from disk into RAM, Base64-encode them, and inject over 250 Megabytes of raw text into the web browser Virtual DOM tree. This RAM bloat paralyzes JavaScript thread layout engines, causing severe UI stuttering during scrolling.<br/><br/>"
     "ClearSight AI resolved browser memory friction by executing three front-end engineering optimizations:<br/>"
     "• <b>5,000x Payload Compression via Native Socket Streaming:</b> We completely eradicated raw Base64 video string injections from download controls. Video players stream natively from local disk over asynchronous web browser sockets, shrinking total Document Object Model payload size from ~250 Megabytes down to just ~50 Kilobytes.<br/>"
     "• <b>Widescreen 16:9 Cinema Evidence Galleries:</b> Evidential snapshot proofs are encoded into light JPEG memory buffers and formatted onto matching 400x225 widescreen containers, reducing front-end image memory footprint by 95% while eliminating layout height irregularities.<br/>"
@@ -577,10 +580,10 @@ story.append(Paragraph("<b>Visual Architecture of Generated Courtroom Evidential
 dossier_box = [
     [Paragraph("<b>1. SYMMETRIC MEDIA STREAMING SHOWCASE (TOP TIER):</b><br/>"
                "• <b>Normal Speed Surveillance Player:</b> Renders the uncompressed original surveillance feed with high-visibility emerald green tracking box overlay (`Rank #1 | ID #104 | Match: 84.2%`). Includes native zero-RAM browser streaming options (`⋮` Download Menu).<br/>"
-               "• <b>Fractional 3x Slow-Motion Replayer:</b> If the target subject's total physical presence in front of the camera is under 3.0 seconds, an automated dual-column layout side-by-side player displays the exact clip fraction at 3x slow-motion (`⚠️ FORENSIC SLOW-MOTION SEGMENT (<3s APPEARANCE)`), permitting deep courtroom evaluation of walking gait and kinetic posture.", body_style)],
+               "• <b>Fractional 3x Slow-Motion Replayer:</b> If the target subject's total physical presence in front of the camera is under 3.0 seconds, an automated dual-column layout side-by-side player displays the exact clip fraction at 3x slow-motion (`[FORENSIC SLOW-MOTION SEGMENT <3s APPEARANCE]`), permitting deep courtroom evaluation of walking gait and kinetic posture.", body_style)],
     [Paragraph("<b>2. STANDARDIZED 16:9 WIDESCREEN EVIDENCE GALLERY (BOTTOM TIER):</b><br/>"
                "• <b>Uniform Cinema Geometry:</b> Displays the top-3 highest-confidence facial/torso appearance captures harvested across the entire tracking timeline. Every individual photo is mathematically rescaled and centered onto a pristine <b>400x225 Widescreen Cinema Thumbnail Canvas</b> (`#0f172a` deep slate padded framing).<br/>"
-               "• <b>Instant Courtroom Export Buttons:</b> Directly beneath each 16:9 thumbnail card resides an instant lightweight download button (`💾 Download SS #1`, `SS #2`, `SS #3`) that exports the uncompressed high-resolution original digital proof photo directly to investigator USB disks.", body_style)]
+               "• <b>Instant Courtroom Export Buttons:</b> Directly beneath each 16:9 thumbnail card resides an instant lightweight download button (`Download SS #1`, `SS #2`, `SS #3`) that exports the uncompressed high-resolution original digital proof photo directly to investigator USB disks.", body_style)]
 ]
 table_dossier = Table(dossier_box, colWidths=[6.5*inch])
 table_dossier.setStyle(TableStyle([
@@ -615,8 +618,8 @@ story.append(Paragraph(conc_text, body_justify))
 
 story.append(Paragraph("6.2 Challenges Faced", h2_style))
 chal_text = (
-    "During the rigorous development of this project, several formidable engineering challenges were addressed and overcome:<br/>"
-    "• <b>Hardware VRAM Constraints:</b> Developing deep dual-model pipelines (YOLOv8 plus deep RetinaFace/ArcFace embedders) on a consumer laptop equipped with an <b>{gpu_name} with 4 GB VRAM</b> induced strict video memory constraints. This was solved by implementing <b>Strategic Biometric Stride</b>—running kinetic tracking on every single frame while evaluating heavy 512D face embeddings strictly every 3rd frame, cutting GPU compute overhead by 66% without losing tracking accuracy.<br/>"
+    f"During the rigorous development of this project, several formidable engineering challenges were addressed and overcome:<br/>"
+    f"• <b>Hardware VRAM Constraints:</b> Developing deep dual-model pipelines (YOLOv8 plus deep RetinaFace/ArcFace embedders) on a consumer laptop equipped with an <b>{gpu_name}</b> and <b>{total_ram_gb} GB RAM</b> induced strict video memory constraints. This was solved by implementing <b>Strategic Biometric Stride</b>—running kinetic tracking on every single frame while evaluating heavy 512D face embeddings strictly every 3rd frame, cutting GPU compute overhead by 66% without losing tracking accuracy.<br/>"
     "• <b>Windows Certificate Store Exceptions:</b> During initial web server deployments, Python stumbled over malformed or third-party proxy SSL certificates stored in Windows system registry, throwing infamous `ssl.SSLError: [ASN1: NOT_ENOUGH_DATA]` exceptions. This challenge was resolved by engineering a dedicated startup launcher (`start.py`) that applies exception-guarded SSL certificate interceptions strictly prior to module importing.<br/>"
     "• <b>Browser JavaScript RAM Freeze:</b> Initial versions of the dashboard suffered severe GUI freezing in Firefox during scrolling due to Streamlit serializing 250 Megabytes of raw MP4 video data into Base64 JSON strings. This was permanently eradicated by stripping multi-megabyte blobs from download controls and streaming media directly over native browser sockets, achieving a <b>5,000x memory payload compression</b>."
 )
