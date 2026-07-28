@@ -40,11 +40,12 @@ from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
 
 proj_dir = r"C:\Users\rajti\Downloads\Projects\ACADEMIC INTERNSHIP\ClearSight_Project"
 pdf_dir = os.path.join(proj_dir, "PDFs")
-os.makedirs(pdf_dir, exist_ok=True)
+import shutil
 pdf_filepath = os.path.join(pdf_dir, "ClearSight_Final_Report_IITG.pdf")
+temp_filepath = os.path.join(pdf_dir, "_temp_build_target.pdf")
 
 doc = SimpleDocTemplate(
-    pdf_filepath,
+    temp_filepath,
     pagesize=letter,
     leftMargin=1.0 * inch,
     rightMargin=1.0 * inch,
@@ -648,13 +649,30 @@ for idx, ref_text in enumerate(refs, start=1):
     story.append(Paragraph(f"<b>[{idx}]</b> {ref_text}", ParagraphStyle('RefStyle', parent=body_justify, leftIndent=25, firstLineIndent=-25)))
     story.append(Spacer(1, 4))
 
+print("[INFO] COMPILING DOCUMENT TO TEMPORARY STORAGE...")
+doc.build(story)
+
+print("[INFO] DEPLOYING COMPILED PDF TO FINAL TARGETS...")
+alt_filepath = os.path.join(pdf_dir, "ClearSight_Final_Report_IITG_Updated.pdf")
+
+# Always guarantee the fallback file receives a 100% uncorrupted copy
 try:
-    doc.build(story)
-    print(f"\n[SUCCESS] INSTITUTIONAL FINAL REPORT BUILT MAGNIFICENTLY: {pdf_filepath}")
+    shutil.copyfile(temp_filepath, alt_filepath)
+    print(f"[SUCCESS] INSTITUTIONAL FINAL REPORT SAVED SUCCESSFULLY TO: {alt_filepath}")
 except PermissionError:
-    alt_filepath = os.path.join(pdf_dir, "ClearSight_Final_Report_IITG_Updated.pdf")
-    print(f"\n[WARNING] Windows File Lock detected on {pdf_filepath} (file is currently open in your PDF reader).")
-    doc.filename = alt_filepath
-    doc.build(story)
-    print(f"[SUCCESS] INSTITUTIONAL FINAL REPORT SAVED TO ALTERNATE FILE: {alt_filepath}")
+    print(f"[WARNING] Could not overwrite {alt_filepath} because it is currently open in your reader.")
+
+# Try to overwrite the main file if it's not locked
+try:
+    shutil.copyfile(temp_filepath, pdf_filepath)
+    print(f"[SUCCESS] INSTITUTIONAL FINAL REPORT SAVED SUCCESSFULLY TO: {pdf_filepath}")
+except PermissionError:
+    print(f"[NOTE] Main file {pdf_filepath} is currently open and locked in your PDF reader.")
+
+# Cleanup temporary file
+try:
+    os.remove(temp_filepath)
+except Exception:
+    pass
+
 
