@@ -155,26 +155,26 @@ if os.path.exists(iitg_path) and os.path.exists(tih_path):
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(logo_table)
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 12))
 
 story.append(Paragraph("TECHNOLOGY INNOVATION HUB – TIDF INDIAN INSTITUTE OF<br/>TECHNOLOGY GUWAHATI", cover_institution))
-story.append(Spacer(1, 15))
+story.append(Spacer(1, 10))
 story.append(Paragraph("ACADEMIC INTERNSHIP REPORT", cover_report))
 story.append(Paragraph("ClearSight AI: Autonomous Kinetic & Biometric Re-Identification Engine", cover_title))
 story.append(Paragraph("A Deep Learning and Unsupervised Thresholding Approach for Court-Admissible Surveillance Person Re-Identification", cover_sub))
-story.append(Spacer(1, 25))
+story.append(Spacer(1, 15))
 
 story.append(Paragraph("Submitted as part of the<br/><b>TIH–TIDF Summer Internship Program</b>", cover_body_bold))
-story.append(Spacer(1, 20))
+story.append(Spacer(1, 15))
 
 story.append(Paragraph("<b>Submitted By</b>", cover_body_bold))
 story.append(Paragraph("Rajtilak Chamlagain", cover_body))
-story.append(Spacer(1, 25))
+story.append(Spacer(1, 15))
 
 story.append(Paragraph("<b>Under the Guidance of</b>", cover_body_bold))
 story.append(Paragraph("<b>Dr. Mahapara Khursid</b>", cover_body_bold))
 story.append(Paragraph("Technology Innovation Hub – TIDF<br/>Indian Institute of Technology Guwahati", cover_body))
-story.append(Spacer(1, 35))
+story.append(Spacer(1, 20))
 
 story.append(Paragraph("Internship Duration:", cover_body))
 story.append(Paragraph("<b>1 July 2026 – 31 July 2026</b>", cover_body_bold))
@@ -185,23 +185,17 @@ story.append(PageBreak())
 # =====================================================================
 cert_title = ParagraphStyle('CertTitle', parent=cover_report, spaceAfter=25)
 story.append(Paragraph("CERTIFICATE", cert_title))
-story.append(Spacer(1, 10))
+story.append(Spacer(1, 15))
 
-cert_text_1 = (
-    "This is to certify that the project report entitled <b>\"ClearSight AI: Autonomous Kinetic & Biometric Re-Identification Engine\"</b> "
-    "has been successfully carried out by:"
+cert_text_full = (
+    "This is to certify that the project report entitled <b>\"ClearSight AI: Autonomous Kinetic & "
+    "Biometric Re-Identification Engine\"</b> has been successfully carried out by <b>Rajtilak Chamlagain</b> "
+    "during the <b>TIH–TIDF Summer Internship Programme</b> conducted at the <b>Technology Innovation Hub – "
+    "Technology Innovation and Development Foundation (TIH–TIDF), Indian Institute of Technology Guwahati</b>, "
+    "from <b>1 July 2026 to 31 July 2026</b>."
 )
-story.append(Paragraph(cert_text_1, body_justify))
-story.append(Spacer(1, 5))
-story.append(Paragraph("• <b>Rajtilak Chamlagain</b>", ParagraphStyle('CertName', parent=body_justify, leftIndent=25, fontName='Helvetica-Bold')))
-story.append(Spacer(1, 10))
-
-cert_text_2 = (
-    "during the <b>TIH–TIDF Summer Internship Programme</b> conducted at the <b>Technology Innovation Hub – Technology Innovation and Development Foundation (TIH–TIDF), "
-    "Indian Institute of Technology Guwahati</b>, from <b>1 July 2026 to 30 July 2026</b>."
-)
-story.append(Paragraph(cert_text_2, body_justify))
-story.append(Spacer(1, 150))
+story.append(Paragraph(cert_text_full, body_justify))
+story.append(Spacer(1, 100))
 
 sig_text = (
     "<b>Dr. Mahapara Khursid</b><br/>"
