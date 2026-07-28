@@ -655,24 +655,40 @@ doc.build(story)
 print("[INFO] DEPLOYING COMPILED PDF TO FINAL TARGETS...")
 alt_filepath = os.path.join(pdf_dir, "ClearSight_Final_Report_IITG_Updated.pdf")
 
+# Try to overwrite the main file if it's not locked
+saved_successfully = False
+try:
+    shutil.copyfile(temp_filepath, pdf_filepath)
+    print(f"[SUCCESS] INSTITUTIONAL FINAL REPORT SAVED SUCCESSFULLY TO: {pdf_filepath}")
+    saved_successfully = True
+except PermissionError:
+    print(f"[NOTE] Main file {pdf_filepath} is currently open and locked in your PDF reader.")
+
 # Always guarantee the fallback file receives a 100% uncorrupted copy
 try:
     shutil.copyfile(temp_filepath, alt_filepath)
     print(f"[SUCCESS] INSTITUTIONAL FINAL REPORT SAVED SUCCESSFULLY TO: {alt_filepath}")
+    saved_successfully = True
 except PermissionError:
     print(f"[WARNING] Could not overwrite {alt_filepath} because it is currently open in your reader.")
 
-# Try to overwrite the main file if it's not locked
-try:
-    shutil.copyfile(temp_filepath, pdf_filepath)
-    print(f"[SUCCESS] INSTITUTIONAL FINAL REPORT SAVED SUCCESSFULLY TO: {pdf_filepath}")
-except PermissionError:
-    print(f"[NOTE] Main file {pdf_filepath} is currently open and locked in your PDF reader.")
+# If both are locked by WPS Office, dynamically generate a fresh versioned filename guaranteed to be open!
+if not saved_successfully:
+    for version in range(3, 20):
+        dynamic_filepath = os.path.join(pdf_dir, f"ClearSight_Final_Report_IITG_v{version}.pdf")
+        try:
+            shutil.copyfile(temp_filepath, dynamic_filepath)
+            print(f"\n[SUCCESS >>> OPEN THIS FILE <<<] SAVED TO FRESH UNLOCKED FILE: {dynamic_filepath}")
+            saved_successfully = True
+            break
+        except PermissionError:
+            continue
 
 # Cleanup temporary file
 try:
     os.remove(temp_filepath)
 except Exception:
     pass
+
 
 
