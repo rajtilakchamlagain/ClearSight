@@ -648,5 +648,13 @@ for idx, ref_text in enumerate(refs, start=1):
     story.append(Paragraph(f"<b>[{idx}]</b> {ref_text}", ParagraphStyle('RefStyle', parent=body_justify, leftIndent=25, firstLineIndent=-25)))
     story.append(Spacer(1, 4))
 
-doc.build(story)
-print(f"\n[SUCCESS] INSTITUTIONAL FINAL REPORT BUILT MAGNIFICENTLY: {pdf_filepath}")
+try:
+    doc.build(story)
+    print(f"\n[SUCCESS] INSTITUTIONAL FINAL REPORT BUILT MAGNIFICENTLY: {pdf_filepath}")
+except PermissionError:
+    alt_filepath = os.path.join(pdf_dir, "ClearSight_Final_Report_IITG_Updated.pdf")
+    print(f"\n[WARNING] Windows File Lock detected on {pdf_filepath} (file is currently open in your PDF reader).")
+    doc.filename = alt_filepath
+    doc.build(story)
+    print(f"[SUCCESS] INSTITUTIONAL FINAL REPORT SAVED TO ALTERNATE FILE: {alt_filepath}")
+
