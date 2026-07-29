@@ -13,7 +13,6 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
-from pptx.enum.shapes import MSO_SHAPE
 
 proj_dir = r"C:\Users\rajti\Downloads\Projects\ACADEMIC INTERNSHIP\ClearSight_Project"
 pdf_dir = os.path.join(proj_dir, "PDFs")
@@ -27,12 +26,13 @@ prs.slide_height = Inches(7.5)
 
 BLANK_LAYOUT = prs.slide_layouts[6]
 
-BG_COLOR = RGBColor(15, 23, 42) # #0f172a
-ACCENT_COLOR = RGBColor(56, 189, 248) # #38bdf8 (Light Blue)
-TEXT_COLOR = RGBColor(248, 250, 252) # #f8fafc (White-ish)
-MUTED_COLOR = RGBColor(148, 163, 184) # #94a3b8
+# LIGHT MODE COLORS
+BG_COLOR = RGBColor(255, 255, 255) # White
+ACCENT_COLOR = RGBColor(15, 60, 150) # Professional Deep Blue
+TEXT_COLOR = RGBColor(30, 30, 30) # Dark Charcoal/Black
+MUTED_COLOR = RGBColor(80, 80, 80) # Dark Gray
 
-def apply_dark_background(slide):
+def apply_light_background(slide):
     background = slide.background
     fill = background.fill
     fill.solid()
@@ -66,7 +66,7 @@ def add_bullet_points(slide, left, top, width, height, points):
 
 # --- SLIDE 1: Title ---
 slide_1 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_1)
+apply_light_background(slide_1)
 txBox = slide_1.shapes.add_textbox(Inches(1), Inches(2), Inches(11.3), Inches(2))
 tf = txBox.text_frame
 p = tf.paragraphs[0]
@@ -94,7 +94,7 @@ p3.alignment = PP_ALIGN.CENTER
 
 # --- SLIDE 2: The Surveillance Dilemma ---
 slide_2 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_2)
+apply_light_background(slide_2)
 add_title(slide_2, "The Surveillance Dilemma")
 pts_2 = [
     "Crowd Occlusions: Targets hide behind pillars; basic trackers lose identity.",
@@ -106,7 +106,7 @@ add_bullet_points(slide_2, Inches(1), Inches(2), Inches(11), Inches(4), pts_2)
 
 # --- SLIDE 3: Architecture Pipeline ---
 slide_3 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_3)
+apply_light_background(slide_3)
 add_title(slide_3, "5-Phase Architecture Pipeline")
 pts_3 = [
     "Phase 1: Biometric Encoding (RetinaFace + ArcFace)",
@@ -119,7 +119,7 @@ add_bullet_points(slide_3, Inches(1), Inches(2), Inches(11), Inches(4), pts_3)
 
 # --- SLIDE 4: Solving Crowd Occlusion (With Graph) ---
 slide_4 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_4)
+apply_light_background(slide_4)
 add_title(slide_4, "Solving Crowd Occlusion")
 pts_4 = [
     "YOLOv8: Real-time bounding box detection.",
@@ -134,7 +134,7 @@ except:
 
 # --- SLIDE 5: Biometric Invariance (With Graph) ---
 slide_5 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_5)
+apply_light_background(slide_5)
 add_title(slide_5, "Biometric Invariance")
 pts_5 = [
     "RetinaFace: 5-point alignment straightens tilted faces automatically.",
@@ -149,7 +149,7 @@ except:
 
 # --- SLIDE 6: Autonomous Spectral Gap (With Graph) ---
 slide_6 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_6)
+apply_light_background(slide_6)
 add_title(slide_6, "Autonomous Spectral Gap")
 pts_6 = [
     "Humans manually guessing match thresholds is a legal liability.",
@@ -164,7 +164,7 @@ except:
 
 # --- SLIDE 7: The Rule of Law ---
 slide_7 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_7)
+apply_light_background(slide_7)
 add_title(slide_7, "The Rule of Law (Why NO GenAI?)")
 pts_7 = [
     "Generative AI (GFPGAN) hallucinates fake pixels to sharpen blurry faces.",
@@ -176,12 +176,13 @@ add_bullet_points(slide_7, Inches(1), Inches(2), Inches(11), Inches(4), pts_7)
 
 # --- SLIDE 8: Zero-Lag Courtroom UI (With Graph) ---
 slide_8 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_8)
-add_title(slide_8, "Zero-Lag Courtroom UI")
+apply_light_background(slide_8)
+add_title(slide_8, "Zero-Lag Courtroom UI & Video Triage")
 pts_8 = [
-    "Old web frameworks inject Base64 video into DOM, consuming 250MB+ RAM.",
-    "ClearSight utilizes Native Disk Sockets, shrinking payload to 0.05MB.",
-    "Achieves a staggering 5,000x Payload Compression, preventing browser freezes."
+    "Native Disk Sockets: Shrinks payload to 0.05MB, stopping browser freezes.",
+    "Top-4 Split Strategy: Deep learning models occasionally lose tracking IDs.",
+    "We present up to 4 top candidate videos instead of just 1.",
+    "Allows human observers to visually verify the suspect from the best 4 angles!"
 ]
 add_bullet_points(slide_8, Inches(0.5), Inches(2), Inches(6.5), Inches(4), pts_8)
 try:
@@ -189,41 +190,30 @@ try:
 except:
     pass
 
-# --- SLIDE 9: Live Demo Placeholder ---
-slide_9 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_9)
-add_title(slide_9, "Live Demonstration / Video Proof")
-tx = slide_9.shapes.add_textbox(Inches(2), Inches(3), Inches(9.33), Inches(2))
-tf = tx.text_frame
-p = tf.paragraphs[0]
-p.text = "[ INSERT YOUR OUTPUT.MP4 VIDEO HERE ]\nGo to Insert -> Video -> This Device in PowerPoint"
-p.font.size = Pt(28)
-p.font.color.rgb = TEXT_COLOR
-p.alignment = PP_ALIGN.CENTER
 
-# --- SLIDE 10: Conclusion & Future Scope ---
-slide_10 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_10)
-add_title(slide_10, "Conclusion & Future Scope")
-pts_10 = [
+# --- SLIDE 9: Conclusion & Future Scope ---
+slide_9 = prs.slides.add_slide(BLANK_LAYOUT)
+apply_light_background(slide_9)
+add_title(slide_9, "Conclusion & Future Scope")
+pts_9 = [
     "Delivered a turnkey digital forensic tool integrating tracking, biometrics, and autonomous math.",
     "Overcame hardware VRAM limits (GTX 1650) via 'Strategic Biometric Stride'.",
     "Future: Scale to Smart-City RTSP networks.",
     "Future: FAISS Vector Databases for nationwide indexing in <15ms."
 ]
-add_bullet_points(slide_10, Inches(1), Inches(2), Inches(11), Inches(4), pts_10)
+add_bullet_points(slide_9, Inches(1), Inches(2), Inches(11), Inches(4), pts_9)
 
-# --- SLIDE 11: Q&A ---
-slide_11 = prs.slides.add_slide(BLANK_LAYOUT)
-apply_dark_background(slide_11)
-tx = slide_11.shapes.add_textbox(Inches(1), Inches(3), Inches(11.3), Inches(1.5))
+# --- SLIDE 10: Thank You ---
+slide_10 = prs.slides.add_slide(BLANK_LAYOUT)
+apply_light_background(slide_10)
+tx = slide_10.shapes.add_textbox(Inches(1), Inches(3), Inches(11.3), Inches(1.5))
 tf = tx.text_frame
 p = tf.paragraphs[0]
-p.text = "Thank You\nQuestions & Answers"
-p.font.size = Pt(64)
+p.text = "Thank You"
+p.font.size = Pt(72)
 p.font.bold = True
 p.font.color.rgb = ACCENT_COLOR
 p.alignment = PP_ALIGN.CENTER
 
 prs.save(pptx_filepath)
-print(f"[SUCCESS] PREMIUM PPTX SAVED TO: {pptx_filepath}")
+print(f"[SUCCESS] LIGHT MODE PPTX SAVED TO: {pptx_filepath}")
