@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearSight AI - Premium Presentation</title>
+    
+    <!-- Reveal.js Core CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+    
+    <!-- Reveal.js Theme (Dark/Premium) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/blood.min.css" id="theme">
+    
+    <!-- Google Fonts for Premium Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Custom Premium Overrides */
+        .reveal { font-family: 'Inter', sans-serif; }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            text-transform: none;
+            letter-spacing: -1px;
+            color: #f8fafc;
+        }
+        .reveal h1 { font-size: 3.5em; background: -webkit-linear-gradient(45deg, #3b82f6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .reveal h2 { color: #38bdf8; font-size: 2.2em; }
+        .reveal h3 { color: #94a3b8; font-size: 1.5em; font-weight: 600; }
+        
+        .reveal p, .reveal li { font-size: 0.8em; line-height: 1.5; color: #cbd5e1; }
+        .reveal ul { margin-left: 1em; }
+        .reveal li { margin-bottom: 0.8em; }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+        .grid-img { border-radius: 15px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); max-height: 450px; width: auto; object-fit: cover;}
+        
+        .highlight { color: #facc15; font-weight: 600; }
+        .danger { color: #ef4444; font-weight: 600; }
+        .success { color: #10b981; font-weight: 600; }
+        
+        /* Logos */
+        .logo-container { display: flex; justify-content: center; gap: 30px; margin-bottom: 30px; }
+        .inst-logo { height: 100px; border-radius: 50%; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            
+            <!-- SLIDE 1: Title -->
+            <section data-transition="zoom">
+                <div class="glass-panel">
+                    <div class="logo-container">
+                        <img src="iitg.jpg" class="inst-logo" onerror="this.style.display='none'">
+                        <img src="tih.jpg" class="inst-logo" style="border-radius: 10px;" onerror="this.style.display='none'">
+                    </div>
+                    <h1>ClearSight AI</h1>
+                    <h3>Autonomous Kinetic & Biometric Re-Identification Engine</h3>
+                    <br>
+                    <p style="font-size: 0.7em; color: #94a3b8;">
+                        <b>Submitted By:</b> Rajtilak Chamlagain<br>
+                        <b>Under Guidance of:</b> Dr. Mahapara Khursid<br>
+                        TIH–TIDF, Indian Institute of Technology Guwahati
+                    </p>
+                </div>
+            </section>
+
+            <!-- SLIDE 2: The Problem -->
+            <section data-transition="slide">
+                <h2>The Surveillance Dilemma</h2>
+                <div class="glass-panel grid-2">
+                    <div>
+                        <ul>
+                            <li><span class="danger">Crowd Occlusions:</span> Targets hide behind pillars; basic trackers lose identity instantly.</li>
+                            <li><span class="danger">Environmental Chaos:</span> Shadows, blur, and 45° angles destroy standard pixel matching.</li>
+                            <li><span class="danger">Static Thresholds:</span> Guessing a "50% match" rule causes false arrests in the dark.</li>
+                            <li><span class="danger">Browser Overload:</span> Traditional Base64 evidence rendering freezes police laptops.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <img src="https://images.unsplash.com/photo-1555861496-0666c8981751?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="CCTV Camera" class="grid-img">
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 3: Architecture -->
+            <section data-transition="fade">
+                <h2>5-Phase Architecture</h2>
+                <div class="glass-panel">
+                    <ul>
+                        <li><span class="highlight">Phase 1: Biometric Encoding</span> — RetinaFace + ArcFace (512D)</li>
+                        <li><span class="highlight">Phase 2: Kinetic Localization</span> — YOLOv8 + ByteTrack</li>
+                        <li><span class="highlight">Phase 3: Unsupervised Selection</span> — Autonomous Spectral Gap Engine</li>
+                        <li><span class="highlight">Phase 4: Evidence Synthesis</span> — 3x Slow-Motion Reconstructor</li>
+                        <li><span class="highlight">Phase 5: Zero-Lag UI</span> — Streamlit + Native Disk Sockets</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SLIDE 4: Kinetic Tracking Graph -->
+            <section data-transition="slide">
+                <h2>Solving Crowd Occlusion</h2>
+                <div class="grid-2">
+                    <div>
+                        <h3>YOLOv8 + ByteTrack</h3>
+                        <ul>
+                            <li><b>YOLOv8:</b> Real-time bounding box detection.</li>
+                            <li><b>ByteTrack:</b> Uses <span class="highlight">Kalman Filters</span> to predict movement.</li>
+                            <li><b>Result:</b> Unlike DeepSORT, ByteTrack keeps target IDs alive even when completely hidden by a crowd!</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <img src="graphs/Graph_2_Kinetic_Retention.png" class="grid-img" onerror="this.src=''">
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 5: ArcFace Biometrics Graph -->
+            <section data-transition="slide">
+                <h2>Biometric Invariance</h2>
+                <div class="grid-2">
+                    <div>
+                        <img src="graphs/Graph_3_Biometric_Robustness.png" class="grid-img" onerror="this.src=''">
+                    </div>
+                    <div>
+                        <h3>RetinaFace + ArcFace</h3>
+                        <ul>
+                            <li><b>RetinaFace:</b> 5-point alignment straightens tilted faces automatically.</li>
+                            <li><b>ArcFace 512D:</b> Rejects outdated FaceNet. Maps faces to a strict mathematical sphere.</li>
+                            <li><b>Result:</b> <span class="success">90%+ Accuracy</span> maintained in low light and heavy makeup.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 6: Spectral Gap Graph -->
+            <section data-transition="slide">
+                <h2>Removing Human Error</h2>
+                <div class="grid-2">
+                    <div>
+                        <h3>Autonomous Spectral Gap</h3>
+                        <ul>
+                            <li>Humans manually guessing match thresholds is a <span class="danger">legal liability</span>.</li>
+                            <li>Our algorithm calculates the <span class="highlight">Maximal Derivative Drop-Off</span> between scores.</li>
+                            <li>It autonomously locks the operational threshold gate without human bias.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <img src="graphs/Graph_1_Spectral_Gap.png" class="grid-img" onerror="this.src=''">
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 7: The Rule of Law -->
+            <section data-transition="convex">
+                <h2>The Rule of Law in AI</h2>
+                <div class="glass-panel">
+                    <h3>Why No GenAI or CLAHE?</h3>
+                    <br>
+                    <ul>
+                        <li>Generative AI (GFPGAN) <span class="danger">hallucinates fake pixels</span> to make blurry faces look sharp.</li>
+                        <li>In a court of law, defense attorneys will successfully argue the evidence is <b>manipulated</b>.</li>
+                        <li>ClearSight AI strictly computes against <span class="success">authentic, unmanipulated pixels</span>. Our advanced ArcFace geometry proves we don't need fake enhancements to catch suspects.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SLIDE 8: RAM Optimization Graph -->
+            <section data-transition="slide">
+                <h2>Zero-Lag Courtroom UI</h2>
+                <div class="grid-2">
+                    <div>
+                        <img src="graphs/Graph_4_RAM_Optimization.png" class="grid-img" onerror="this.src=''">
+                    </div>
+                    <div>
+                        <h3>Solving Browser Freezes</h3>
+                        <ul>
+                            <li>Old web frameworks inject raw Base64 video into the DOM, consuming <span class="danger">250MB+ RAM</span>.</li>
+                            <li>ClearSight utilizes <b>Native Disk Sockets</b>, shrinking payload to <span class="success">0.05MB</span>.</li>
+                            <li>Achieves a staggering <span class="highlight">5,000x Payload Compression</span>!</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SLIDE 9: Live Demo Placeholder -->
+            <section data-transition="zoom" data-background="#0f172a">
+                <h1 style="font-size: 3em;">Live Demonstration</h1>
+                <p>Click below to play the unconstrained surveillance test.</p>
+                <!-- NOTE: Replace the src with the actual name of your mp4 file -->
+                <video width="800" height="450" controls style="border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+                    <source src="../media/output.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </section>
+
+            <!-- SLIDE 10: Conclusion -->
+            <section data-transition="slide">
+                <h2>Conclusion</h2>
+                <div class="glass-panel">
+                    <ul>
+                        <li><b>A Complete Solution:</b> Delivered a turnkey digital forensic tool integrating tracking, biometrics, and autonomous math.</li>
+                        <li><b>Real-World Ready:</b> Overcame hardware VRAM limits and Windows SSL crashes to run perfectly on consumer laptops.</li>
+                        <li><b>Future Scope:</b> Ready to scale to Smart-City RTSP networks and FAISS nationwide indexing.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SLIDE 11: Q&A -->
+            <section data-transition="fade">
+                <div class="glass-panel">
+                    <h1>Thank You</h1>
+                    <h3>Questions & Answers</h3>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Reveal.js Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            transition: 'slide',
+            backgroundTransition: 'fade',
+            slideNumber: 'c/t',
+            center: true
+        });
+    </script>
+</body>
+</html>
