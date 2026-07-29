@@ -13,11 +13,13 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
+import shutil
 
 proj_dir = r"C:\Users\rajti\Downloads\Projects\ACADEMIC INTERNSHIP\ClearSight_Project"
 pdf_dir = os.path.join(proj_dir, "PDFs")
 graphs_dir = os.path.join(pdf_dir, "graphs")
 pptx_filepath = os.path.join(pdf_dir, "ClearSight_Premium_Presentation.pptx")
+temp_filepath = os.path.join(pdf_dir, "_temp_presentation.pptx")
 
 prs = Presentation()
 # Widescreen 16:9
@@ -215,5 +217,31 @@ p.font.bold = True
 p.font.color.rgb = ACCENT_COLOR
 p.alignment = PP_ALIGN.CENTER
 
-prs.save(pptx_filepath)
-print(f"[SUCCESS] LIGHT MODE PPTX SAVED TO: {pptx_filepath}")
+# Compile to Temp first
+prs.save(temp_filepath)
+
+# Try saving to target
+saved = False
+try:
+    shutil.copyfile(temp_filepath, pptx_filepath)
+    print(f"[SUCCESS] LIGHT MODE PPTX SAVED TO: {pptx_filepath}")
+    saved = True
+except PermissionError:
+    print(f"[NOTE] Main file {pptx_filepath} is currently locked by your presentation software.")
+
+if not saved:
+    for version in range(2, 20):
+        dynamic_filepath = os.path.join(pdf_dir, f"ClearSight_Premium_Presentation_v{version}.pptx")
+        try:
+            shutil.copyfile(temp_filepath, dynamic_filepath)
+            print(f"\n[SUCCESS >>> OPEN THIS FILE <<<] SAVED TO FRESH UNLOCKED FILE: {dynamic_filepath}")
+            saved = True
+            break
+        except PermissionError:
+            continue
+
+try:
+    os.remove(temp_filepath)
+except Exception:
+    pass
+
