@@ -205,10 +205,22 @@ pts_9 = [
 ]
 add_bullet_points(slide_9, Inches(1), Inches(2), Inches(11), Inches(4), pts_9)
 
-# --- SLIDE 10: Thank You ---
+# --- SLIDE 10: References ---
 slide_10 = prs.slides.add_slide(BLANK_LAYOUT)
 apply_light_background(slide_10)
-tx = slide_10.shapes.add_textbox(Inches(1), Inches(3), Inches(11.3), Inches(1.5))
+add_title(slide_10, "Key References")
+pts_10 = [
+    "[1] Jocher, G., et al. (2023). Ultralytics YOLOv8 Architecture.",
+    "[2] Zhang, Y., et al. (2022). ByteTrack: Multi-Object Tracking by Associating Every Detection Box.",
+    "[3] Deng, J., et al. (2019). ArcFace: Additive Angular Margin Loss for Deep Face Recognition.",
+    "[4] Deng, J., et al. (2020). RetinaFace: Single-Stage Dense Face Localization in the Wild."
+]
+add_bullet_points(slide_10, Inches(1), Inches(2), Inches(11), Inches(4), pts_10)
+
+# --- SLIDE 11: Thank You ---
+slide_11 = prs.slides.add_slide(BLANK_LAYOUT)
+apply_light_background(slide_11)
+tx = slide_11.shapes.add_textbox(Inches(1), Inches(3), Inches(11.3), Inches(1.5))
 tf = tx.text_frame
 p = tf.paragraphs[0]
 p.text = "Thank You"
