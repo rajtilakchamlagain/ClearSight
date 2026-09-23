@@ -10,3 +10,6 @@ Pillow
 streamlit-option-menu
 streamlit-lottie
 requests
+ultralytics
+insightface
+onnxruntime
