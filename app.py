@@ -199,8 +199,8 @@ with st.sidebar:
 st.markdown("<div class='hero-title'>ClearSight AI Enterprise</div>", unsafe_allow_html=True)
 st.markdown("<div class='hero-subtitle'>State-of-the-Art Biometric Person Search & Surveillance Video Intelligence</div>", unsafe_allow_html=True)
 
-with st.spinner("⚡ Activating neural tracking pipelines..."):
-    yolo_model, face_app, body_embedder, img_transform, device = get_ai_registry()
+# with st.spinner("⚡ Activating neural tracking pipelines..."):
+#     yolo_model, face_app, body_embedder, img_transform, device = get_ai_registry()
 
 tab_engine, tab_manual = st.tabs(["🚨 Surveillance & Tracking Engine", "📖 Official Law Enforcement Field Manual"])
 
@@ -230,6 +230,10 @@ with tab_engine:
             with st.container(border=True):
                 st.markdown("### ⚡ Digital Forensic Engine Processing")
                 
+                # Defer model loading until button click to prevent startup OOM
+                with st.spinner("⚡ Activating heavy neural tracking pipelines (This may take a moment)..."):
+                    yolo_model, face_app, body_embedder, img_transform, device = get_ai_registry()
+
                 progress_bar = st.progress(0.0)
                 status_text = st.empty()
                 
